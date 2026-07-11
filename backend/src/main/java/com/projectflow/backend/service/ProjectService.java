@@ -161,10 +161,23 @@ public class ProjectService {
     }
 
     // ── إدارة الأعضاء ──────────────────────────────────
+    // Garantit que le owner apparait toujours, meme sur un projet cree avant
+    // l'ajout automatique du owner comme ProjectMember (createProject) : sans
+    // ca, un tel projet "legacy" retourne une liste vide et la page Ressources
+    // d'un CHEF_PROJET semble completement cassee alors que son projet a bien
+    // un owner et potentiellement d'autres membres reels.
     public List<UserResponse> getProjectMembers(Long projectId) {
-        return memberRepository.findByProject_Id(projectId)
-            .stream()
-            .map(m -> toUserResponse(m.getUser()))
+        Project project = projectRepository.findById(projectId)
+            .orElseThrow(() -> new RuntimeException("Projet non trouvé : " + projectId));
+
+        Map<Long, User> users = new LinkedHashMap<>();
+        users.put(project.getOwner().getId(), project.getOwner());
+        for (ProjectMember pm : memberRepository.findByProject_Id(projectId)) {
+            users.put(pm.getUser().getId(), pm.getUser());
+        }
+
+        return users.values().stream()
+            .map(this::toUserResponse)
             .collect(Collectors.toList());
     }
 
@@ -223,6 +236,15 @@ public class ProjectService {
         }
     }
 
+    // Meme logique que getProjectMembers() : compte le owner meme s'il n'a pas
+    // (encore) de ligne ProjectMember explicite (projets crees avant l'ajout
+    // automatique du owner a la creation).
+    private int effectiveMemberCount(Project p) {
+        boolean ownerIsMember = p.getMembers().stream()
+            .anyMatch(m -> m.getUser().getId().equals(p.getOwner().getId()));
+        return p.getMembers().size() + (ownerIsMember ? 0 : 1);
+    }
+
     // ── Mappers ────────────────────────────────────────
     private ProjectResponse toResponse(Project p) {
         return ProjectResponse.builder()
@@ -237,7 +259,7 @@ public class ProjectService {
             .endDate(p.getEndDate())
             .budget(p.getBudget())
             .hourlyRate(p.getHourlyRate())
-            .memberCount(p.getMembers().size())
+            .memberCount(effectiveMemberCount(p))
             .taskCount(p.getTasks().size())
             .completedTaskCount((int) p.getTasks().stream()
                 .filter(t -> t.getStatus() == TaskStatus.DONE).count())
