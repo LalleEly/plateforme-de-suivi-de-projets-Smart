@@ -72,7 +72,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _userName = name ?? '';
       _userRole = role ?? '';
     });
-    if (_canCreateProject) _loadTeamLoad();
+    if (_canSeeTeamLoad) _loadTeamLoad();
   }
 
   // ── يجمع KPI الأعضاء من كل المشاريع لي عند المستخدم ──────
@@ -121,7 +121,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  bool get _canCreateProject =>
+  // Seul MANAGER cree des projets desormais (il designe toujours qui en est
+  // le chef de projet) ; CHEF_PROJET garde la gestion de son propre projet
+  // mais n'en cree plus. Meme regle que projects_screen.dart.
+  bool get _canCreateProject => _userRole == 'MANAGER';
+
+  // Charge équipe : même permission que /kpi/members (MANAGER ou CHEF_PROJET),
+  // distinct de _canCreateProject depuis que la création est MANAGER-only.
+  bool get _canSeeTeamLoad =>
       _userRole == 'MANAGER' || _userRole == 'CHEF_PROJET';
 
   Color get _roleColor =>
@@ -139,7 +146,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: RefreshIndicator(
           onRefresh: () async {
             await widget.onRefresh();
-            if (_canCreateProject) await _loadTeamLoad();
+            if (_canSeeTeamLoad) await _loadTeamLoad();
           },
           color: context.colors.accent,
           child: SingleChildScrollView(
@@ -180,7 +187,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   _buildProjects(),
                   Column(children: [
                     // Charge équipe غير لـ MANAGER/CHEF_PROJET (نفس صلاحية /kpi/members)
-                    if (_canCreateProject) ...[
+                    if (_canSeeTeamLoad) ...[
                       _buildTeamLoad(),
                       const SizedBox(height: 12),
                     ],
@@ -626,16 +633,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ]);
   }
 
-  void _showCreateProjectDialog() {
+  Future<void> _showCreateProjectDialog() async {
     final l10n = AppLocalizations.of(context)!;
     final nameCtrl = TextEditingController();
     final keyCtrl = TextEditingController();
     final descCtrl = TextEditingController();
     final budgetCtrl = TextEditingController(text: '50000');
 
+    // Le Manager designe toujours qui dirige le projet (MEMBRE inclus : sera
+    // promu CHEF_PROJET automatiquement cote backend si choisi).
+    List<MemberModel> users = [];
+    try {
+      users = await ApiService.getAllUsers();
+    } catch (_) {}
+    if (!mounted) return;
+    int? selectedOwnerId = users.isNotEmpty ? users.first.id : null;
+
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (_) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
         backgroundColor: context.colors.bg2,
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -656,6 +673,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const SizedBox(height: 10),
               _dialogField(l10n.fieldBudget, budgetCtrl,
                   type: TextInputType.number),
+              const SizedBox(height: 10),
+              _ownerPicker(users, selectedOwnerId,
+                  (id) => setDialogState(() => selectedOwnerId = id)),
             ],
           ),
         ),
@@ -666,14 +686,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   style: TextStyle(color: context.colors.text2))),
           ElevatedButton(
               onPressed: () async {
-                if (nameCtrl.text.isEmpty || keyCtrl.text.isEmpty) return;
+                if (nameCtrl.text.isEmpty ||
+                    keyCtrl.text.isEmpty ||
+                    selectedOwnerId == null) {
+                  return;
+                }
                 try {
                   await ApiService.createProject(
                       nameCtrl.text,
                       keyCtrl.text.toUpperCase(),
                       descCtrl.text,
-                      double.tryParse(budgetCtrl.text) ?? 50000);
-                  Navigator.pop(context);
+                      double.tryParse(budgetCtrl.text) ?? 50000,
+                      selectedOwnerId!);
+                  if (mounted) Navigator.pop(context);
                   await widget.onRefresh();
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -698,7 +723,52 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ElevatedButton.styleFrom(backgroundColor: context.colors.accent),
               child: Text(l10n.createProjectButton)),
         ],
+        ),
       ),
+    );
+  }
+
+  Widget _ownerPicker(
+      List<MemberModel> options, int? selectedId, ValueChanged<int?> onChanged) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Chef de projet', style: TextStyle(
+          fontSize: 11, color: context.colors.text2)),
+        const SizedBox(height: 4),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            color: context.colors.bg3,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: context.colors.border)),
+          child: DropdownButton<int>(
+            value: selectedId,
+            isExpanded: true,
+            underline: const SizedBox(),
+            dropdownColor: context.colors.bg3,
+            hint: Text(
+              options.isEmpty ? 'Aucun utilisateur disponible' : 'Choisir un utilisateur',
+              style: TextStyle(fontSize: 12, color: context.colors.text2)),
+            style: TextStyle(fontSize: 12, color: context.colors.text1),
+            items: options
+                .map((u) => DropdownMenuItem(
+                    value: u.id,
+                    child: Text('${u.fullName} (${u.globalRole})',
+                      overflow: TextOverflow.ellipsis)))
+                .toList(),
+            onChanged: options.isEmpty ? null : onChanged,
+          ),
+        ),
+        if (selectedId != null &&
+            options.firstWhere((u) => u.id == selectedId).globalRole == 'MEMBRE')
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              'Cet utilisateur sera automatiquement promu Chef de projet.',
+              style: TextStyle(fontSize: 10, color: context.colors.amber)),
+          ),
+      ],
     );
   }
 
