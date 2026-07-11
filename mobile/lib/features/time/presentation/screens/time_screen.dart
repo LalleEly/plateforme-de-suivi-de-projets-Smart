@@ -151,12 +151,12 @@ class _TimeScreenState extends State<TimeScreen> {
         child: _loading
           ? Center(child: CircularProgressIndicator(color: context.colors.accent))
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(responsiveValue(context, mobile: 12, desktop: 16)),
               child: Column(children: [
                 if (_error != null) _buildBanner(_error!, context.colors.red, Icons.error_outline),
                 if (_success != null) _buildBanner(_success!, context.colors.green, Icons.check_circle_outline),
                 ResponsivePanels(children: [_buildForm(), _buildWeekChart()]),
-                const SizedBox(height: 14),
+                SizedBox(height: responsiveValue(context, mobile: 10, desktop: 14)),
                 _buildHistory(),
               ]),
             ),
@@ -205,7 +205,7 @@ class _TimeScreenState extends State<TimeScreen> {
 
   Widget _buildForm() {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.all(responsiveValue(context, mobile: 10, desktop: 14)),
       decoration: BoxDecoration(
           color: context.colors.bg2,
           borderRadius: BorderRadius.circular(10),
@@ -367,7 +367,7 @@ class _TimeScreenState extends State<TimeScreen> {
     final weekM = _weekMinutes % 60;
 
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.all(responsiveValue(context, mobile: 10, desktop: 14)),
       decoration: BoxDecoration(
           color: context.colors.bg2,
           borderRadius: BorderRadius.circular(10),

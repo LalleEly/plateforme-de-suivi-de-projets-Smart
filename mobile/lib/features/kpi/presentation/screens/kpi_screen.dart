@@ -80,14 +80,14 @@ class _KpiScreenState extends State<KpiScreen> {
             : _error != null
                 ? _buildError()
                 : SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(responsiveValue(context, mobile: 12, desktop: 16)),
                     child: Column(children: [
                       _buildStatCards(),
-                      const SizedBox(height: 14),
+                      SizedBox(height: responsiveValue(context, mobile: 10, desktop: 14)),
                       ResponsivePanels(
                         children: [_buildBarChart(), _buildScoreTable()],
                       ),
-                      const SizedBox(height: 14),
+                      SizedBox(height: responsiveValue(context, mobile: 10, desktop: 14)),
                       _buildMemberPerf(),
                     ]),
                   ),
@@ -171,12 +171,13 @@ class _KpiScreenState extends State<KpiScreen> {
           Icons.warning_amber_rounded),
     ];
 
-    return ResponsivePanels(spacing: 8, children: cards.map(_statCard).toList());
+    return ResponsiveKpiGrid(spacing: 8, children: cards.map(_statCard).toList());
   }
 
   Widget _statCard(_KpiCard c) {
+    final mobile = isMobileWidth(context);
     return Container(
-      padding: const EdgeInsets.all(13),
+      padding: EdgeInsets.all(cardPadding(context)),
       decoration: BoxDecoration(
           color: context.colors.bg2,
           borderRadius: BorderRadius.circular(10),
@@ -185,29 +186,34 @@ class _KpiScreenState extends State<KpiScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-              width: 34,
-              height: 34,
+              width: mobile ? 28 : 34,
+              height: mobile ? 28 : 34,
               decoration: BoxDecoration(
                   color: c.color.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8)),
-              child: Icon(c.icon, color: c.color, size: 17)),
-          const SizedBox(height: 8),
+              child: Icon(c.icon, color: c.color, size: mobile ? 14 : 17)),
+          SizedBox(height: mobile ? 6 : 8),
           Text(c.value,
               style: TextStyle(
-                  fontSize: 22, fontWeight: FontWeight.w700, color: c.color)),
+                  fontSize: mobile ? 18 : 22, fontWeight: FontWeight.w700, color: c.color)),
           const SizedBox(height: 1),
           Text(c.label,
-              style: TextStyle(fontSize: 10, color: context.colors.text2)),
-          const SizedBox(height: 5),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: mobile ? 9 : 10, color: context.colors.text2)),
+          SizedBox(height: mobile ? 4 : 5),
           Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+              padding: EdgeInsets.symmetric(
+                  horizontal: mobile ? 6 : 7, vertical: mobile ? 1 : 2),
               decoration: BoxDecoration(
                   color: (c.isUp ? context.colors.green : context.colors.red)
                       .withOpacity(0.12),
                   borderRadius: BorderRadius.circular(16)),
               child: Text(c.delta,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                      fontSize: 9,
+                      fontSize: mobile ? 8 : 9,
                       fontWeight: FontWeight.w600,
                       color: c.isUp ? context.colors.green : context.colors.red))),
         ],
@@ -420,7 +426,7 @@ class _KpiScreenState extends State<KpiScreen> {
     final projects = _kpi?.projectKpis ?? [];
 
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.all(responsiveValue(context, mobile: 10, desktop: 14)),
       decoration: BoxDecoration(
           color: context.colors.bg2,
           borderRadius: BorderRadius.circular(10),
@@ -470,77 +476,78 @@ class _KpiScreenState extends State<KpiScreen> {
                       style: TextStyle(fontSize: 11, color: context.colors.text3))),
             )
           else
-            Row(
-                children: _members.take(4).toList().asMap().entries.map((e) {
-              final m = e.value;
-              final color = m.overloaded
-                  ? context.colors.red
-                  : (m.workload > 70 ? context.colors.amber : context.colors.blue);
-              return Expanded(
-                child: Padding(
-                  padding: EdgeInsets.only(
-                      right: e.key < _members.take(4).length - 1 ? 10 : 0),
-                  child: Column(children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                          color: color.withOpacity(0.15), shape: BoxShape.circle),
-                      child: Center(
-                          child: Text(
-                              m.memberName.isNotEmpty
-                                  ? m.memberName
-                                      .split(' ')
-                                      .map((w) => w.isNotEmpty ? w[0] : '')
-                                      .take(2)
-                                      .join()
-                                      .toUpperCase()
-                                  : '?',
-                              style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: color))),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(m.memberName,
-                        style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: context.colors.text1),
-                        overflow: TextOverflow.ellipsis),
-                    const SizedBox(height: 6),
-                    Text('${m.tasksCompleted}/${m.tasksAssigned} tâches',
-                        style: TextStyle(
-                            fontSize: 10, color: context.colors.text2)),
-                    Text('${m.loggedHours}h loggées',
-                        style: TextStyle(
-                            fontSize: 10, color: context.colors.text2)),
-                    const SizedBox(height: 8),
-                    Text('${m.workload.toStringAsFixed(0)}%',
-                        style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: color)),
-                    Text('charge',
-                        style: TextStyle(
-                            fontSize: 10, color: context.colors.text2)),
-                    const SizedBox(height: 6),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(2),
-                      child: LinearProgressIndicator(
-                        value: (m.workload / 100).clamp(0, 1),
-                        backgroundColor: context.colors.bg4,
-                        valueColor: AlwaysStoppedAnimation(color),
-                        minHeight: 4,
-                      ),
-                    ),
-                  ]),
-                ),
-              );
-            }).toList()),
+            ResponsiveKpiGrid(
+                spacing: 10,
+                children:
+                    _members.take(4).map(_memberPerfCard).toList()),
         ],
       ),
     );
+  }
+
+  Widget _memberPerfCard(MemberKpiModel m) {
+    final mobile = isMobileWidth(context);
+    final color = m.overloaded
+        ? context.colors.red
+        : (m.workload > 70 ? context.colors.amber : context.colors.blue);
+    final avatarSize = mobile ? 38.0 : 44.0;
+    return Column(children: [
+      Container(
+        width: avatarSize,
+        height: avatarSize,
+        decoration: BoxDecoration(
+            color: color.withOpacity(0.15), shape: BoxShape.circle),
+        child: Center(
+            child: Text(
+                m.memberName.isNotEmpty
+                    ? m.memberName
+                        .split(' ')
+                        .map((w) => w.isNotEmpty ? w[0] : '')
+                        .take(2)
+                        .join()
+                        .toUpperCase()
+                    : '?',
+                style: TextStyle(
+                    fontSize: mobile ? 12 : 14,
+                    fontWeight: FontWeight.w700,
+                    color: color))),
+      ),
+      SizedBox(height: mobile ? 6 : 8),
+      Text(m.memberName,
+          style: TextStyle(
+              fontSize: mobile ? 11 : 12,
+              fontWeight: FontWeight.w600,
+              color: context.colors.text1),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis),
+      SizedBox(height: mobile ? 4 : 6),
+      Text('${m.tasksCompleted}/${m.tasksAssigned} tâches',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(fontSize: mobile ? 9 : 10, color: context.colors.text2)),
+      Text('${m.loggedHours}h loggées',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(fontSize: mobile ? 9 : 10, color: context.colors.text2)),
+      SizedBox(height: mobile ? 6 : 8),
+      Text('${m.workload.toStringAsFixed(0)}%',
+          style: TextStyle(
+              fontSize: mobile ? 16 : 18,
+              fontWeight: FontWeight.w700,
+              color: color)),
+      Text('charge',
+          style: TextStyle(fontSize: mobile ? 9 : 10, color: context.colors.text2)),
+      SizedBox(height: mobile ? 4 : 6),
+      ClipRRect(
+        borderRadius: BorderRadius.circular(2),
+        child: LinearProgressIndicator(
+          value: (m.workload / 100).clamp(0, 1),
+          backgroundColor: context.colors.bg4,
+          valueColor: AlwaysStoppedAnimation(color),
+          minHeight: 4,
+        ),
+      ),
+    ]);
   }
 }
 

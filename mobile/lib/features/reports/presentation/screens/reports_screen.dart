@@ -317,7 +317,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
         child: _loading
           ? Center(child: CircularProgressIndicator(color: context.colors.accent))
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(responsiveValue(context, mobile: 12, desktop: 16)),
               child: Column(children: [
                 if (_error != null) _buildBanner(_error!, context.colors.red, Icons.error_outline),
                 if (_success != null) _buildBanner(_success!, context.colors.green, Icons.check_circle_outline),
@@ -385,7 +385,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   Widget _buildGenerateForm() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(responsiveValue(context, mobile: 12, desktop: 16)),
       decoration: BoxDecoration(
           color: context.colors.bg2,
           borderRadius: BorderRadius.circular(10),
@@ -394,7 +394,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
         Text('GÉNÉRER UN RAPPORT',
             style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
                 color: context.colors.text2, letterSpacing: 0.07)),
-        const SizedBox(height: 16),
+        SizedBox(height: responsiveValue(context, mobile: 12, desktop: 16)),
 
         Text('Type de rapport',
             style: TextStyle(fontSize: 11, color: context.colors.text2)),
@@ -472,7 +472,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
           ),
         ),
 
-        const SizedBox(height: 16),
+        SizedBox(height: responsiveValue(context, mobile: 12, desktop: 16)),
 
         Row(children: [
           Expanded(
@@ -522,7 +522,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
     return Column(children: [
       Container(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(responsiveValue(context, mobile: 12, desktop: 16)),
         decoration: BoxDecoration(
             color: context.colors.bg2,
             borderRadius: BorderRadius.circular(10),
@@ -531,7 +531,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
           Text('RÉSUMÉ DES DONNÉES',
               style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
                   color: context.colors.text2, letterSpacing: 0.07)),
-          const SizedBox(height: 14),
+          SizedBox(height: responsiveValue(context, mobile: 10, desktop: 14)),
           _kpiRow(Icons.folder_outlined, 'Projets totaux',
               '${kpi.totalProjects}', context.colors.blue),
           _kpiRow(Icons.check_box_outlined, 'Tâches complétées',
@@ -542,10 +542,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
               '${kpi.totalLoggedHours}h', context.colors.purple),
         ]),
       ),
-      const SizedBox(height: 12),
+      SizedBox(height: responsiveValue(context, mobile: 10, desktop: 12)),
       if (kpi.projectKpis.isNotEmpty)
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(responsiveValue(context, mobile: 12, desktop: 16)),
           decoration: BoxDecoration(
               color: context.colors.bg2,
               borderRadius: BorderRadius.circular(10),
@@ -554,7 +554,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
             Text('PAR PROJET',
                 style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
                     color: context.colors.text2, letterSpacing: 0.07)),
-            const SizedBox(height: 14),
+            SizedBox(height: responsiveValue(context, mobile: 10, desktop: 14)),
             ...kpi.projectKpis.map((p) => Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: Row(children: [

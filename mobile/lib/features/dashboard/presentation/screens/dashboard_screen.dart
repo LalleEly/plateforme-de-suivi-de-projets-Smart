@@ -144,13 +144,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
           color: context.colors.accent,
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(responsiveValue(context, mobile: 12, desktop: 16)),
             child: Column(children: [
               if (_userRole.isNotEmpty)
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Container(
-                    margin: const EdgeInsets.only(bottom: 12),
+                    margin: const EdgeInsets.only(bottom: 10),
                     padding:
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
@@ -173,7 +173,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               if (widget.kpi != null) ...[
                 _buildKpiCards(),
-                const SizedBox(height: 12),
+                SizedBox(height: responsiveValue(context, mobile: 10, desktop: 12)),
               ],
               ResponsivePanels(
                 children: [
@@ -294,15 +294,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Icons.access_time_outlined),
     ];
 
-    return ResponsivePanels(
+    return ResponsiveKpiGrid(
       spacing: 8,
       children: items.map(_kpiCard).toList(),
     );
   }
 
   Widget _kpiCard(_KpiData item) {
+    final mobile = isMobileWidth(context);
     return Container(
-      padding: const EdgeInsets.all(13),
+      padding: EdgeInsets.all(cardPadding(context)),
       decoration: BoxDecoration(
           color: context.colors.bg2,
           borderRadius: BorderRadius.circular(10),
@@ -311,30 +312,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-              width: 34,
-              height: 34,
+              width: mobile ? 28 : 34,
+              height: mobile ? 28 : 34,
               decoration: BoxDecoration(
                   color: item.color.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8)),
-              child: Icon(item.icon, color: item.color, size: 17)),
-          const SizedBox(height: 8),
+              child: Icon(item.icon, color: item.color, size: mobile ? 14 : 17)),
+          SizedBox(height: mobile ? 6 : 8),
           Text(item.value,
               style: TextStyle(
-                  fontSize: 22,
+                  fontSize: mobile ? 18 : 22,
                   fontWeight: FontWeight.w700,
                   color: item.color)),
           const SizedBox(height: 1),
           Text(item.label,
-              style: TextStyle(fontSize: 10, color: context.colors.text2)),
-          const SizedBox(height: 5),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: mobile ? 9 : 10, color: context.colors.text2)),
+          SizedBox(height: mobile ? 4 : 5),
           Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+              padding: EdgeInsets.symmetric(
+                  horizontal: mobile ? 6 : 7, vertical: mobile ? 1 : 2),
               decoration: BoxDecoration(
                   color: context.colors.green.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(16)),
               child: Text(item.delta,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                      fontSize: 9,
+                      fontSize: mobile ? 8 : 9,
                       fontWeight: FontWeight.w600,
                       color: context.colors.green))),
         ],
@@ -345,7 +351,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildProjects() {
     final l10n = AppLocalizations.of(context)!;
     return Container(
-      padding: const EdgeInsets.all(13),
+      padding: EdgeInsets.all(cardPadding(context)),
       decoration: BoxDecoration(
           color: context.colors.bg2,
           borderRadius: BorderRadius.circular(10),
@@ -465,7 +471,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildTeamLoad() {
     final l10n = AppLocalizations.of(context)!;
     return Container(
-      padding: const EdgeInsets.all(13),
+      padding: EdgeInsets.all(cardPadding(context)),
       decoration: BoxDecoration(
           color: context.colors.bg2,
           borderRadius: BorderRadius.circular(10),
@@ -550,7 +556,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildAlerts() {
     final l10n = AppLocalizations.of(context)!;
     return Container(
-      padding: const EdgeInsets.all(13),
+      padding: EdgeInsets.all(cardPadding(context)),
       decoration: BoxDecoration(
           color: context.colors.bg2,
           borderRadius: BorderRadius.circular(10),

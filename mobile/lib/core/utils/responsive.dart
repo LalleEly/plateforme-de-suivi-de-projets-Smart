@@ -47,3 +47,44 @@ class ResponsivePanels extends StatelessWidget {
     );
   }
 }
+
+/// Grille 2 colonnes sur mobile pour les cartes stat/KPI (plus dense qu'une
+/// pile 1 par ligne), ligne pleine largeur inchangee sur desktop.
+class ResponsiveKpiGrid extends StatelessWidget {
+  final List<Widget> children;
+  final double spacing;
+
+  const ResponsiveKpiGrid({super.key, required this.children, this.spacing = 8});
+
+  @override
+  Widget build(BuildContext context) {
+    if (isMobileWidth(context)) {
+      return LayoutBuilder(builder: (context, constraints) {
+        final itemWidth = (constraints.maxWidth - spacing) / 2;
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          children: [
+            for (final c in children) SizedBox(width: itemWidth, child: c),
+          ],
+        );
+      });
+    }
+    return Row(
+      children: [
+        for (var i = 0; i < children.length; i++) ...[
+          Expanded(child: children[i]),
+          if (i < children.length - 1) SizedBox(width: spacing),
+        ],
+      ],
+    );
+  }
+}
+
+/// Padding de carte compact sur mobile (rendu natif, dense), aere sur desktop.
+double cardPadding(BuildContext context) => isMobileWidth(context) ? 10 : 13;
+
+/// Choisit une valeur selon la largeur d'ecran, pour eviter de repeter
+/// `isMobileWidth(context) ? a : b` partout.
+T responsiveValue<T>(BuildContext context, {required T mobile, required T desktop}) =>
+    isMobileWidth(context) ? mobile : desktop;

@@ -111,12 +111,12 @@ class _MembersScreenState extends State<MembersScreen> {
           : _error != null
             ? _buildError()
             : SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(responsiveValue(context, mobile: 12, desktop: 16)),
                 child: Column(children: [
                   _buildStats(),
-                  const SizedBox(height: 14),
+                  SizedBox(height: responsiveValue(context, mobile: 10, desktop: 14)),
                   _buildSearchBar(),
-                  const SizedBox(height: 12),
+                  SizedBox(height: responsiveValue(context, mobile: 10, desktop: 12)),
                   _buildTable(),
                 ]),
               ),
@@ -151,7 +151,7 @@ class _MembersScreenState extends State<MembersScreen> {
     final managers = _members.where((m) => m.globalRole == 'MANAGER').length;
     final chefs = _members.where((m) => m.globalRole == 'CHEF_PROJET').length;
 
-    return ResponsivePanels(spacing: 10, children: [
+    return ResponsiveKpiGrid(spacing: 10, children: [
       _statCard(Icons.people_outline,
           '${_members.length}', 'Total membres', context.colors.purple),
       _statCard(Icons.person_outline,
@@ -164,27 +164,36 @@ class _MembersScreenState extends State<MembersScreen> {
   }
 
   Widget _statCard(IconData icon, String value, String label, Color color) {
+    final mobile = isMobileWidth(context);
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.all(cardPadding(context)),
       decoration: BoxDecoration(
           color: context.colors.bg2,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: context.colors.border, width: 0.5)),
       child: Row(children: [
         Container(
-          width: 36, height: 36,
+          width: mobile ? 30 : 36, height: mobile ? 30 : 36,
           decoration: BoxDecoration(
               color: color.withOpacity(0.1),
               borderRadius: BorderRadius.circular(8)),
-          child: Icon(icon, color: color, size: 18),
+          child: Icon(icon, color: color, size: mobile ? 15 : 18),
         ),
-        const SizedBox(width: 12),
-        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(value,
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: color)),
-          Text(label,
-              style: TextStyle(fontSize: 10, color: context.colors.text2)),
-        ]),
+        SizedBox(width: mobile ? 8 : 12),
+        Expanded(
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+              Text(value,
+                  style: TextStyle(
+                      fontSize: mobile ? 17 : 20,
+                      fontWeight: FontWeight.w700,
+                      color: color)),
+              Text(label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: mobile ? 9 : 10, color: context.colors.text2)),
+            ])),
       ]),
     );
   }

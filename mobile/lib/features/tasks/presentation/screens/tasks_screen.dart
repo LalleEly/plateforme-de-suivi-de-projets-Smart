@@ -6,6 +6,7 @@ import '../../../../core/network/api_error.dart';
 import '../../../../core/network/api_service.dart';
 import '../../../../core/storage/storage_service.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/responsive.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../../../shared/models/comment_model.dart';
 import '../../../../shared/models/project_model.dart';
@@ -235,7 +236,7 @@ class _TasksScreenState extends State<TasksScreen> {
                       )
                     : ListView(
                         physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.all(16),
+                        padding: EdgeInsets.all(responsiveValue(context, mobile: 12, desktop: 16)),
                         children: [
                           _buildSection(
                               l10n.filterInProgress,
@@ -276,6 +277,103 @@ class _TasksScreenState extends State<TasksScreen> {
 
   Widget _buildTopBar() {
     final l10n = AppLocalizations.of(context)!;
+    final mobile = isMobileWidth(context);
+    final canManage = _userRole == 'MANAGER' || _userRole == 'CHEF_PROJET';
+
+    final title = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(l10n.myTasksTitle,
+            style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: context.colors.text1)),
+        Text(l10n.tasksAssignedCount(_tasks.length),
+            style: TextStyle(fontSize: 10, color: context.colors.text2)),
+      ],
+    );
+
+    final filterChips = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: ['Tous', 'En cours', 'À faire', 'Terminées'].map((f) => Padding(
+            padding: const EdgeInsets.only(right: 6),
+            child: GestureDetector(
+              onTap: () => setState(() => _filter = f),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                    color: _filter == f ? context.colors.accent : context.colors.bg3,
+                    border: Border.all(
+                        color: _filter == f
+                            ? context.colors.accent
+                            : context.colors.border),
+                    borderRadius: BorderRadius.circular(7)),
+                child: Text(_filterLabel(f),
+                    style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color:
+                            _filter == f ? Colors.white : context.colors.text2)),
+              ),
+            ),
+          )).toList(),
+    );
+
+    final importButton = OutlinedButton.icon(
+      onPressed: _showImportDialog,
+      icon: const Icon(Icons.file_upload_outlined, size: 14),
+      label: const Text('Importer (CSV)'),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: context.colors.text1,
+        side: BorderSide(color: context.colors.border),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        textStyle:
+            const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(7)),
+      ),
+    );
+
+    final addButton = ElevatedButton.icon(
+      onPressed: _showCreateDialog,
+      icon: const Icon(Icons.add, size: 14),
+      label: Text(mobile ? l10n.create : l10n.newTaskButton),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: context.colors.accent,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        textStyle:
+            const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(7)),
+      ),
+    );
+
+    if (mobile) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+            color: context.colors.bg2,
+            border: Border(
+                bottom: BorderSide(color: context.colors.border, width: 0.5))),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Expanded(child: title),
+            if (canManage) addButton,
+          ]),
+          const SizedBox(height: 8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(children: [
+              filterChips,
+              if (canManage) ...[const SizedBox(width: 6), importButton],
+            ]),
+          ),
+        ]),
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
       decoration: BoxDecoration(
@@ -283,72 +381,13 @@ class _TasksScreenState extends State<TasksScreen> {
           border:
               Border(bottom: BorderSide(color: context.colors.border, width: 0.5))),
       child: Row(children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(l10n.myTasksTitle,
-                style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: context.colors.text1)),
-            Text(l10n.tasksAssignedCount(_tasks.length),
-                style: TextStyle(fontSize: 10, color: context.colors.text2)),
-          ],
-        ),
+        title,
         const Spacer(),
-        ...['Tous', 'En cours', 'À faire', 'Terminées'].map((f) => Padding(
-              padding: const EdgeInsets.only(right: 6),
-              child: GestureDetector(
-                onTap: () => setState(() => _filter = f),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                      color: _filter == f ? context.colors.accent : context.colors.bg3,
-                      border: Border.all(
-                          color: _filter == f
-                              ? context.colors.accent
-                              : context.colors.border),
-                      borderRadius: BorderRadius.circular(7)),
-                  child: Text(_filterLabel(f),
-                      style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color:
-                              _filter == f ? Colors.white : context.colors.text2)),
-                ),
-              ),
-            )),
-        if (_userRole == 'MANAGER' || _userRole == 'CHEF_PROJET') ...[
-          OutlinedButton.icon(
-            onPressed: _showImportDialog,
-            icon: const Icon(Icons.file_upload_outlined, size: 14),
-            label: const Text('Importer (CSV)'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: context.colors.text1,
-              side: BorderSide(color: context.colors.border),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              textStyle:
-                  const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(7)),
-            ),
-          ),
+        filterChips,
+        if (canManage) ...[
+          importButton,
           const SizedBox(width: 8),
-          ElevatedButton.icon(
-            onPressed: _showCreateDialog,
-            icon: const Icon(Icons.add, size: 14),
-            label: Text(l10n.newTaskButton),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: context.colors.accent,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              textStyle:
-                  const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(7)),
-            ),
-          ),
+          addButton,
         ],
       ]),
     );
@@ -398,7 +437,7 @@ class _TasksScreenState extends State<TasksScreen> {
     final priorityColor = _priorityColor(task.priority);
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(responsiveValue(context, mobile: 10, desktop: 12)),
       decoration: BoxDecoration(
           color: context.colors.bg2,
           borderRadius: BorderRadius.circular(10),

@@ -9,6 +9,7 @@ import '../../../../core/network/api_service.dart';
 import '../../../../core/storage/storage_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/save_bytes.dart';
+import '../../../../core/utils/responsive.dart';
 import '../../../../shared/models/kpi_model.dart';
 import '../../../../shared/models/project_model.dart';
 
@@ -70,12 +71,12 @@ class _ProfitScreenState extends State<ProfitScreen> {
           : _error != null
             ? _buildError()
             : SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(responsiveValue(context, mobile: 12, desktop: 16)),
                 child: Column(children: [
                   _buildSelectorAndExport(),
-                  const SizedBox(height: 14),
+                  SizedBox(height: responsiveValue(context, mobile: 10, desktop: 14)),
                   _buildStats(),
-                  const SizedBox(height: 14),
+                  SizedBox(height: responsiveValue(context, mobile: 10, desktop: 14)),
                   _buildProjectTable(),
                 ]),
               ),
@@ -84,65 +85,81 @@ class _ProfitScreenState extends State<ProfitScreen> {
   }
 
   Widget _buildSelectorAndExport() {
+    final mobile = isMobileWidth(context);
+
+    final dropdown = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+      decoration: BoxDecoration(
+          color: context.colors.bg3,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: context.colors.border)),
+      child: DropdownButton<ProjectModel?>(
+        value: _selectedProject,
+        isExpanded: true,
+        underline: const SizedBox(),
+        dropdownColor: context.colors.bg3,
+        hint: Text('Tous les projets',
+            style: TextStyle(fontSize: 12, color: context.colors.text2)),
+        style: TextStyle(fontSize: 12, color: context.colors.text1),
+        onChanged: (p) => setState(() => _selectedProject = p),
+        items: [
+          DropdownMenuItem<ProjectModel?>(
+            value: null,
+            child: Text('Tous les projets',
+                style: TextStyle(color: context.colors.text2)),
+          ),
+          ..._projects.map((p) => DropdownMenuItem<ProjectModel?>(
+                value: p,
+                child: Text(p.name, overflow: TextOverflow.ellipsis),
+              )),
+        ],
+      ),
+    );
+
+    final csvButton = ElevatedButton.icon(
+      onPressed: _exporting ? null : _exportCsv,
+      icon: _exporting
+          ? const SizedBox(width: 14, height: 14,
+              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+          : const Icon(Icons.table_chart_outlined, size: 16),
+      label: const Text('CSV / Excel'),
+      style: ElevatedButton.styleFrom(
+          backgroundColor: context.colors.accent, foregroundColor: Colors.white),
+    );
+
+    final pdfButton = ElevatedButton.icon(
+      onPressed: _exporting ? null : _exportPdf,
+      icon: const Icon(Icons.picture_as_pdf_outlined, size: 16),
+      label: const Text('PDF'),
+      style: ElevatedButton.styleFrom(
+          backgroundColor: context.colors.bg3,
+          foregroundColor: context.colors.text1,
+          side: BorderSide(color: context.colors.border)),
+    );
+
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.all(cardPadding(context)),
       decoration: BoxDecoration(
           color: context.colors.bg2,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: context.colors.border, width: 0.5)),
-      child: Row(children: [
-        Expanded(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-            decoration: BoxDecoration(
-                color: context.colors.bg3,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: context.colors.border)),
-            child: DropdownButton<ProjectModel?>(
-              value: _selectedProject,
-              isExpanded: true,
-              underline: const SizedBox(),
-              dropdownColor: context.colors.bg3,
-              hint: Text('Tous les projets',
-                  style: TextStyle(fontSize: 12, color: context.colors.text2)),
-              style: TextStyle(fontSize: 12, color: context.colors.text1),
-              onChanged: (p) => setState(() => _selectedProject = p),
-              items: [
-                DropdownMenuItem<ProjectModel?>(
-                  value: null,
-                  child: Text('Tous les projets',
-                      style: TextStyle(color: context.colors.text2)),
-                ),
-                ..._projects.map((p) => DropdownMenuItem<ProjectModel?>(
-                      value: p,
-                      child: Text(p.name, overflow: TextOverflow.ellipsis),
-                    )),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        ElevatedButton.icon(
-          onPressed: _exporting ? null : _exportCsv,
-          icon: _exporting
-              ? const SizedBox(width: 14, height: 14,
-                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-              : const Icon(Icons.table_chart_outlined, size: 16),
-          label: const Text('CSV / Excel'),
-          style: ElevatedButton.styleFrom(
-              backgroundColor: context.colors.accent, foregroundColor: Colors.white),
-        ),
-        const SizedBox(width: 8),
-        ElevatedButton.icon(
-          onPressed: _exporting ? null : _exportPdf,
-          icon: const Icon(Icons.picture_as_pdf_outlined, size: 16),
-          label: const Text('PDF'),
-          style: ElevatedButton.styleFrom(
-              backgroundColor: context.colors.bg3,
-              foregroundColor: context.colors.text1,
-              side: BorderSide(color: context.colors.border)),
-        ),
-      ]),
+      child: mobile
+          ? Column(children: [
+              dropdown,
+              const SizedBox(height: 8),
+              Row(children: [
+                Expanded(child: csvButton),
+                const SizedBox(width: 8),
+                Expanded(child: pdfButton),
+              ]),
+            ])
+          : Row(children: [
+              Expanded(child: dropdown),
+              const SizedBox(width: 10),
+              csvButton,
+              const SizedBox(width: 8),
+              pdfButton,
+            ]),
     );
   }
 
@@ -267,47 +284,44 @@ class _ProfitScreenState extends State<ProfitScreen> {
     final kpi = _kpi!;
     final profitSign = _totalProfitability >= 0 ? '+' : '';
 
-    return Row(children: [
-      Expanded(child: _statCard(
-          Icons.folder_outlined, '${kpi.totalProjects}',
-          'Projets suivis', context.colors.blue)),
-      const SizedBox(width: 10),
-      Expanded(child: _statCard(
-          Icons.check_circle_outline, '${kpi.completedTasks}/${kpi.totalTasks}',
-          'Tâches complétées', context.colors.green)),
-      const SizedBox(width: 10),
-      Expanded(child: _statCard(
-          Icons.access_time_rounded, '${kpi.totalLoggedHours}h',
-          'Heures enregistrées', context.colors.purple)),
-      const SizedBox(width: 10),
-      Expanded(child: _statCard(
+    return ResponsiveKpiGrid(spacing: 10, children: [
+      _statCard(Icons.folder_outlined, '${kpi.totalProjects}',
+          'Projets suivis', context.colors.blue),
+      _statCard(Icons.check_circle_outline, '${kpi.completedTasks}/${kpi.totalTasks}',
+          'Tâches complétées', context.colors.green),
+      _statCard(Icons.access_time_rounded, '${kpi.totalLoggedHours}h',
+          'Heures enregistrées', context.colors.purple),
+      _statCard(
           Icons.trending_up_rounded,
           '$profitSign${_totalProfitability.toStringAsFixed(1)}%',
-          'Rentabilité moy.', _totalProfitability >= 0 ? context.colors.green : context.colors.red)),
+          'Rentabilité moy.', _totalProfitability >= 0 ? context.colors.green : context.colors.red),
     ]);
   }
 
   Widget _statCard(IconData icon, String value, String label, Color color) {
+    final mobile = isMobileWidth(context);
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.all(cardPadding(context)),
       decoration: BoxDecoration(
           color: context.colors.bg2,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: context.colors.border, width: 0.5)),
       child: Row(children: [
         Container(
-          width: 36, height: 36,
+          width: mobile ? 30 : 36, height: mobile ? 30 : 36,
           decoration: BoxDecoration(
               color: color.withOpacity(0.1),
               borderRadius: BorderRadius.circular(8)),
-          child: Icon(icon, color: color, size: 18),
+          child: Icon(icon, color: color, size: mobile ? 15 : 18),
         ),
-        const SizedBox(width: 12),
+        SizedBox(width: mobile ? 8 : 12),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(value,
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: color)),
+              style: TextStyle(fontSize: mobile ? 15 : 18, fontWeight: FontWeight.w700, color: color)),
           Text(label,
-              style: TextStyle(fontSize: 10, color: context.colors.text2)),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: mobile ? 9 : 10, color: context.colors.text2)),
         ])),
       ]),
     );

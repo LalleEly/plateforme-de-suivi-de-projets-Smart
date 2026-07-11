@@ -3,6 +3,7 @@ import '../../../../core/network/api_error.dart';
 import '../../../../core/network/api_service.dart';
 import '../../../../core/storage/storage_service.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/responsive.dart';
 import '../../../../shared/models/project_model.dart';
 import '../../../../shared/models/sprint_model.dart';
 
@@ -103,10 +104,10 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
               child: SingleChildScrollView(
                 physics:
                   const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(responsiveValue(context, mobile: 12, desktop: 16)),
                 child: Column(children: [
                   _buildTable(),
-                  const SizedBox(height: 14),
+                  SizedBox(height: responsiveValue(context, mobile: 10, desktop: 14)),
                   _buildGantt(),
                 ]),
               ),
@@ -116,6 +117,87 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
   }
 
   Widget _buildTopBar() {
+    final mobile = isMobileWidth(context);
+
+    final title = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Projets', style: TextStyle(
+          fontSize: 15, fontWeight: FontWeight.w700,
+          color: context.colors.text1)),
+        Text('${_projects.where((p) => !p.archived).length} projets · '
+          '${_projects.where(
+            (p) => !p.archived && p.status == 'ACTIVE').length} actifs',
+          style: TextStyle(
+            fontSize: 10, color: context.colors.text2)),
+      ],
+    );
+
+    final filterChips = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: ['Tous', 'Actifs', 'Planification', 'Archivés'].map((f) => Padding(
+        padding: const EdgeInsets.only(right: 6),
+        child: GestureDetector(
+          onTap: () => _applyFilter(f),
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: _filter == f
+                ? context.colors.accent
+                : context.colors.bg3,
+              border: Border.all(
+                color: _filter == f
+                  ? context.colors.accent : context.colors.border),
+              borderRadius: BorderRadius.circular(7)),
+            child: Text(f, style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: _filter == f
+                ? Colors.white : context.colors.text2)),
+          ),
+        ),
+      )).toList(),
+    );
+
+    final canCreate = _userRole == 'MANAGER' || _userRole == 'CHEF_PROJET';
+    final addButton = ElevatedButton.icon(
+      onPressed: _showCreateDialog,
+      icon: const Icon(Icons.add, size: 14),
+      label: Text(mobile ? 'Nouveau' : 'Nouveau projet'),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: context.colors.accent,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(
+          horizontal: 12, vertical: 8),
+        textStyle: const TextStyle(
+          fontSize: 11, fontWeight: FontWeight.w700),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(7)),
+      ),
+    );
+
+    if (mobile) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: context.colors.bg2,
+          border: Border(bottom: BorderSide(
+            color: context.colors.border, width: 0.5))),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Expanded(child: title),
+            if (canCreate) addButton,
+          ]),
+          const SizedBox(height: 8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: filterChips,
+          ),
+        ]),
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: 18, vertical: 10),
@@ -124,60 +206,10 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
         border: Border(bottom: BorderSide(
           color: context.colors.border, width: 0.5))),
       child: Row(children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Projets', style: TextStyle(
-              fontSize: 15, fontWeight: FontWeight.w700,
-              color: context.colors.text1)),
-            Text('${_projects.where((p) => !p.archived).length} projets · '
-              '${_projects.where(
-                (p) => !p.archived && p.status == 'ACTIVE').length} actifs',
-              style: TextStyle(
-                fontSize: 10, color: context.colors.text2)),
-          ],
-        ),
+        title,
         const Spacer(),
-        ...['Tous', 'Actifs', 'Planification',
-            'Archivés'].map((f) => Padding(
-          padding: const EdgeInsets.only(right: 6),
-          child: GestureDetector(
-            onTap: () => _applyFilter(f),
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: _filter == f
-                  ? context.colors.accent
-                  : context.colors.bg3,
-                border: Border.all(
-                  color: _filter == f
-                    ? context.colors.accent : context.colors.border),
-                borderRadius: BorderRadius.circular(7)),
-              child: Text(f, style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-                color: _filter == f
-                  ? Colors.white : context.colors.text2)),
-            ),
-          ),
-        )),
-        if (_userRole == 'MANAGER' || _userRole == 'CHEF_PROJET')
-          ElevatedButton.icon(
-            onPressed: _showCreateDialog,
-            icon: const Icon(Icons.add, size: 14),
-            label: const Text('Nouveau projet'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: context.colors.accent,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 12, vertical: 8),
-              textStyle: const TextStyle(
-                fontSize: 11, fontWeight: FontWeight.w700),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(7)),
-            ),
-          ),
+        filterChips,
+        if (canCreate) addButton,
       ]),
     );
   }
