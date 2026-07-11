@@ -27,10 +27,13 @@ class _ProjectFlowAppState extends State<ProjectFlowApp> {
   ThemeMode _themeMode = ThemeMode.dark;
   Locale _locale = const Locale('fr');
 
+  ThemeMode get themeMode => _themeMode;
+
   @override
   void initState() {
     super.initState();
     _loadLocale();
+    _loadTheme();
   }
 
   Future<void> _loadLocale() async {
@@ -40,8 +43,17 @@ class _ProjectFlowAppState extends State<ProjectFlowApp> {
     }
   }
 
+  Future<void> _loadTheme() async {
+    final saved = await StorageService.getTheme();
+    if (saved != null && mounted) {
+      setState(() => _themeMode = ThemeMode.values.firstWhere(
+          (m) => m.name == saved, orElse: () => ThemeMode.dark));
+    }
+  }
+
   void setTheme(ThemeMode mode) {
     setState(() => _themeMode = mode);
+    StorageService.saveTheme(mode.name);
   }
 
   void setLocale(Locale locale) {

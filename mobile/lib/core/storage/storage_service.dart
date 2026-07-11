@@ -7,6 +7,7 @@ class StorageService {
   static const String _userNameKey = 'user_name';
   static const String _userRoleKey = 'user_role';
   static const String _localeKey = 'app_locale';
+  static const String _themeKey = 'app_theme';
 
   static Future<void> saveUser({
     required String token,
@@ -67,5 +68,15 @@ class StorageService {
   static Future<String?> getLocale() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_localeKey);
+  }
+
+  static Future<void> saveTheme(String themeName) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_themeKey, themeName);
+  }
+
+  static Future<String?> getTheme() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_themeKey);
   }
 }

@@ -1,10 +1,14 @@
 package com.projectflow.backend.service;
 
+import com.projectflow.backend.domain.entity.Project;
 import com.projectflow.backend.domain.entity.Task;
 import com.projectflow.backend.domain.entity.TimeLog;
 import com.projectflow.backend.domain.entity.User;
+import com.projectflow.backend.domain.enums.GlobalRole;
 import com.projectflow.backend.dto.request.CreateTimeLogRequest;
 import com.projectflow.backend.dto.response.TimeLogResponse;
+import com.projectflow.backend.repository.ProjectMemberRepository;
+import com.projectflow.backend.repository.ProjectRepository;
 import com.projectflow.backend.repository.TaskRepository;
 import com.projectflow.backend.repository.TimeLogRepository;
 import com.projectflow.backend.repository.UserRepository;
@@ -21,6 +25,8 @@ public class TimeLogService {
     private final TimeLogRepository timeLogRepository;
     private final TaskRepository taskRepository;
     private final UserRepository userRepository;
+    private final ProjectRepository projectRepository;
+    private final ProjectMemberRepository memberRepository;
 
     // سجّل وقت جديد
     public TimeLogResponse logTime(CreateTimeLogRequest request, String userEmail) {
@@ -52,8 +58,27 @@ public class TimeLogService {
             .collect(Collectors.toList());
     }
 
+    // MANAGER : n'importe quel projet. CHEF_PROJET/MEMBRE : uniquement les
+    // projets dont ils sont owner/membre — sans ca, n'importe quel utilisateur
+    // authentifie pouvait lire les logs de temps de n'importe quel projet/tache.
+    private void checkProjectAccess(Long projectId, String userEmail) {
+        User current = userRepository.findByEmail(userEmail)
+            .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+        if (current.getGlobalRole() == GlobalRole.MANAGER) return;
+
+        Project project = projectRepository.findById(projectId)
+            .orElseThrow(() -> new RuntimeException("Projet non trouvé"));
+        boolean isOwnerOrMember = project.getOwner().getId().equals(current.getId())
+            || memberRepository.existsByUser_IdAndProject_Id(current.getId(), projectId);
+        if (!isOwnerOrMember) {
+            throw new AccessDeniedException(
+                "Vous n'êtes pas autorisé à consulter ce projet.");
+        }
+    }
+
     // كل سجلات الوقت حسب المشروع
-    public List<TimeLogResponse> getTimeLogsByProject(Long projectId) {
+    public List<TimeLogResponse> getTimeLogsByProject(Long projectId, String userEmail) {
+        checkProjectAccess(projectId, userEmail);
         return timeLogRepository.findByTask_Project_Id(projectId)
             .stream()
             .map(this::toResponse)
@@ -61,7 +86,10 @@ public class TimeLogService {
     }
 
     // كل سجلات الوقت حسب المهمة
-    public List<TimeLogResponse> getTimeLogsByTask(Long taskId) {
+    public List<TimeLogResponse> getTimeLogsByTask(Long taskId, String userEmail) {
+        Task task = taskRepository.findById(taskId)
+            .orElseThrow(() -> new RuntimeException("Tâche non trouvée"));
+        checkProjectAccess(task.getProject().getId(), userEmail);
         return timeLogRepository.findByTask_Id(taskId)
             .stream()
             .map(this::toResponse)

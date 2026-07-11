@@ -36,6 +36,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _loadUser();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Synchronise avec le theme reellement applique (persiste par ProjectFlowApp) :
+    // sans ca, ce champ restait bloque sur ThemeMode.dark et affichait "Sombre"
+    // comme actif meme quand Clair/Systeme etait la vraie preference active.
+    final current = ProjectFlowApp.of(context)?.themeMode;
+    if (current != null && current != _theme) {
+      setState(() => _theme = current);
+    }
+  }
+
   Future<void> _loadUser() async {
     final name = await StorageService.getUserName();
     final email = await StorageService.getUserEmail();

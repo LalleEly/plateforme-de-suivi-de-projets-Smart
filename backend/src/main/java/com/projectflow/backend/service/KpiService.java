@@ -6,6 +6,7 @@ import com.projectflow.backend.domain.enums.TaskStatus;
 import com.projectflow.backend.dto.response.*;
 import com.projectflow.backend.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -66,6 +67,31 @@ public class KpiService {
             .build();
     }
 
+    // MANAGER : n'importe quel projet. CHEF_PROJET : uniquement ses projets
+    // (owner/membre) — sans ca, un CHEF_PROJET pouvait lire le KPI/les stats
+    // de n'importe quel projet en devinant son id (aucune verification avant).
+    private void checkProjectAccess(Long projectId, String username) {
+        User current = userRepository.findByEmail(username)
+            .orElseThrow(() -> new RuntimeException("Utilisateur non trouve"));
+        if (current.getGlobalRole() == GlobalRole.MANAGER) return;
+
+        Project project = projectRepository.findById(projectId)
+            .orElseThrow(() -> new RuntimeException("Projet non trouve"));
+        boolean isOwnerOrMember = project.getOwner().getId().equals(current.getId())
+            || memberRepository.existsByUser_IdAndProject_Id(current.getId(), projectId);
+        if (!isOwnerOrMember) {
+            throw new AccessDeniedException(
+                "Vous n'êtes pas autorisé à consulter ce projet.");
+        }
+    }
+
+    public ProjectKpiResponse getProjectKpi(Long projectId, String username) {
+        checkProjectAccess(projectId, username);
+        Project project = projectRepository.findById(projectId)
+            .orElseThrow(() -> new RuntimeException("Projet non trouve"));
+        return calculateProjectKpi(project);
+    }
+
     public ProjectKpiResponse calculateProjectKpi(Project project) {
         List<Task> tasks = taskRepository.findByProject_Id(project.getId());
         long completed = tasks.stream()
@@ -100,7 +126,9 @@ public class KpiService {
             .build();
     }
 
-    public List<MemberKpiResponse> getMemberKpis(Long projectId) {
+    public List<MemberKpiResponse> getMemberKpis(Long projectId, String username) {
+        checkProjectAccess(projectId, username);
+
         // Union des ProjectMember officiels + de quiconque a une tache assignee
         // dans ce projet : un owner solo qui n'a jamais ete ajoute comme membre
         // (cas frequent avant l'ajout automatique a la creation) aurait sinon

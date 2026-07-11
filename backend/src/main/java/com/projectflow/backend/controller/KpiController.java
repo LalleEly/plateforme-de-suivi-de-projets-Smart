@@ -1,8 +1,6 @@
 package com.projectflow.backend.controller;
 
-import com.projectflow.backend.domain.entity.Project;
 import com.projectflow.backend.dto.response.*;
-import com.projectflow.backend.repository.ProjectRepository;
 import com.projectflow.backend.service.KpiService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -18,7 +16,6 @@ import java.util.List;
 public class KpiController {
 
     private final KpiService kpiService;
-    private final ProjectRepository projectRepository;
 
     // KPIs : MANAGER (vue globale) أو CHEF_PROJET (فلترة على مشاريعه فقط، ديال KpiService)
     @PreAuthorize("hasAnyRole('MANAGER','CHEF_PROJET')")
@@ -28,21 +25,24 @@ public class KpiController {
         return ResponseEntity.ok(kpiService.getDashboard(userDetails.getUsername()));
     }
 
-    // KPI مشروع واحد: MANAGER أو CHEF_PROJET (فحص ownership فالـ KpiService مستقبلًا إذا تحتاج)
+    // KPI مشروع واحد: MANAGER أو CHEF_PROJET، فحص ownership فالـ KpiService
+    // (bloque un CHEF_PROJET qui devinerait l'id d'un projet qui n'est pas le sien)
     @PreAuthorize("hasAnyRole('MANAGER','CHEF_PROJET')")
     @GetMapping("/project/{projectId}")
     public ResponseEntity<ProjectKpiResponse> getProjectKpi(
-            @PathVariable Long projectId) {
-        Project project = projectRepository.findById(projectId)
-            .orElseThrow(() -> new RuntimeException("Projet non trouve"));
-        return ResponseEntity.ok(kpiService.calculateProjectKpi(project));
+            @PathVariable Long projectId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(
+            kpiService.getProjectKpi(projectId, userDetails.getUsername()));
     }
 
-    // KPI الأعضاء: MANAGER أو CHEF_PROJET
+    // KPI الأعضاء: MANAGER أو CHEF_PROJET، نفس فحص ownership
     @PreAuthorize("hasAnyRole('MANAGER','CHEF_PROJET')")
     @GetMapping("/members/{projectId}")
     public ResponseEntity<List<MemberKpiResponse>> getMemberKpis(
-            @PathVariable Long projectId) {
-        return ResponseEntity.ok(kpiService.getMemberKpis(projectId));
+            @PathVariable Long projectId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(
+            kpiService.getMemberKpis(projectId, userDetails.getUsername()));
     }
 }

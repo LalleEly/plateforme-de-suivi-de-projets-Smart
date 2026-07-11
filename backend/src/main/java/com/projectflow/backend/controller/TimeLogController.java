@@ -38,17 +38,19 @@ public class TimeLogController {
     // GET /api/timelogs/project/{projectId} — سجلات وقت مشروع
     @GetMapping("/project/{projectId}")
     public ResponseEntity<List<TimeLogResponse>> getByProject(
-            @PathVariable Long projectId) {
+            @PathVariable Long projectId,
+            @AuthenticationPrincipal UserDetails userDetails) {
         return ResponseEntity.ok(
-            timeLogService.getTimeLogsByProject(projectId));
+            timeLogService.getTimeLogsByProject(projectId, userDetails.getUsername()));
     }
 
     // GET /api/timelogs/task/{taskId} — سجلات وقت مهمة
     @GetMapping("/task/{taskId}")
     public ResponseEntity<List<TimeLogResponse>> getByTask(
-            @PathVariable Long taskId) {
+            @PathVariable Long taskId,
+            @AuthenticationPrincipal UserDetails userDetails) {
         return ResponseEntity.ok(
-            timeLogService.getTimeLogsByTask(taskId));
+            timeLogService.getTimeLogsByTask(taskId, userDetails.getUsername()));
     }
 
     // DELETE /api/timelogs/{id} — حذف سجل وقت
