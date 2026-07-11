@@ -1,0 +1,80 @@
+spring:
+  application:
+    name: projectflow-backend
+
+  # ═══ Base de données PostgreSQL ═══
+  # Surchargeable par variables d'environnement pour le deploiement (ex: Render).
+  # DATABASE_URL prend le dessus si fourni tel quel (deja au format jdbc:postgresql://...).
+  # Sinon on compose a partir de DB_HOST/DB_PORT/DB_NAME : Render expose ces valeurs
+  # separement pour une DB liee (host/port/database), et sa "connection string" est au
+  # format postgres:// (incompatible avec le driver JDBC, qui exige le prefixe jdbc:).
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:projectflow}}
+    username: ${DATABASE_USERNAME:projectflow_user}
+    # Pas de valeur par defaut : obligatoire via variable d'environnement pour
+    # eviter de committer un mot de passe reel dans le depot git.
+    password: ${DATABASE_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  # ═══ JPA / Hibernate ═══
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  # ═══ Jackson (JSON) ═══
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    time-zone: UTC
+
+  # ═══ Fichiers uploadés ═══
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+  # ═══ Email (mot de passe oublie) ═══
+  # Config de test locale : serveur SMTP factice qui capture les emails sans jamais
+  # les envoyer reellement (meme principe que Mailtrap sandbox). Pour passer sur un
+  # vrai Mailtrap : host=sandbox.smtp.mailtrap.io, port=2525, avec tes identifiants
+  # d'inbox. Pour la prod plus tard : host/port de ton vrai fournisseur (ex: Gmail).
+  mail:
+    host: ${MAIL_HOST:127.0.0.1}
+    port: ${MAIL_PORT:2525}
+    username: ${MAIL_USERNAME:test}
+    password: ${MAIL_PASSWORD:test}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+# ═══ Serveur ═══
+server:
+  # Render (et la plupart des PaaS) fournissent le port a ecouter via $PORT.
+  port: ${PORT:8080}
+  servlet:
+    context-path: /api
+
+# ═══ JWT Configuration ═══
+jwt:
+  # Pas de valeur par defaut : obligatoire via variable d'environnement pour
+  # eviter de committer un secret de signature reel dans le depot git.
+  secret: ${JWT_SECRET}
+  expiration: 900000
+  refresh-expiration: 604800000
+
+# ═══ Logging ═══
+logging:
+  level:
+    com.projectflow: DEBUG
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
+  pattern:
+    console: "%d{HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

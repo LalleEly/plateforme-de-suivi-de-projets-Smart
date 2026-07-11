@@ -1,0 +1,42 @@
+services:
+  - type: web
+    name: projectflow-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    envVars:
+      # Composés séparément plutôt qu'avec "connectionString" : celle-ci est au
+      # format postgres://, incompatible avec le driver JDBC (voir application.yml).
+      - key: DB_HOST
+        fromDatabase:
+          name: projectflow-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: projectflow-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: projectflow-db
+          property: database
+      - key: DATABASE_USERNAME
+        fromDatabase:
+          name: projectflow-db
+          property: user
+      - key: DATABASE_PASSWORD
+        fromDatabase:
+          name: projectflow-db
+          property: password
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ALLOWED_ORIGINS
+        value: "*"
+      - key: PORT
+        value: 8080
+
+databases:
+  - name: projectflow-db
+    plan: free
+    databaseName: projectflow
+    user: projectflow_user
