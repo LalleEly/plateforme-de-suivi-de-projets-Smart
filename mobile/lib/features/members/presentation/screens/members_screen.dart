@@ -35,8 +35,12 @@ class _MembersScreenState extends State<MembersScreen> {
       _userRole = role ?? '';
 
       List<MemberModel> members;
-      if (_userRole == 'CHEF_PROJET') {
-        // CHEF_PROJET : uniquement les membres de ses propres projets (owner/membre)
+      if (_userRole == 'MANAGER') {
+        members = await ApiService.getAllUsers();
+      } else {
+        // CHEF_PROJET/MEMBRE : uniquement les membres de leurs propres projets
+        // (owner/membre) — GET /users est reserve a MANAGER, un MEMBRE qui
+        // l'appelait recevait un 403 et un ecran d'erreur.
         final projects = await ApiService.getProjects();
         final merged = <int, MemberModel>{};
         for (final project in projects) {
@@ -50,8 +54,6 @@ class _MembersScreenState extends State<MembersScreen> {
           }
         }
         members = merged.values.toList();
-      } else {
-        members = await ApiService.getAllUsers();
       }
 
       setState(() { _members = members; _loading = false; });

@@ -4,6 +4,7 @@ import '../../../../core/network/api_service.dart';
 import '../../../../core/storage/storage_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/responsive.dart';
+import '../../../../shared/models/member_model.dart';
 import '../../../../shared/models/project_model.dart';
 import '../../../../shared/models/sprint_model.dart';
 
@@ -400,6 +401,8 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
       onSelected: (v) {
         if (v == 'edit') {
           _showEditDialog(project);
+        } else if (v == 'members') {
+          _showManageMembers(project);
         } else if (v == 'archive') {
           _archiveProject(project);
         } else if (v == 'delete') {
@@ -414,6 +417,17 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
               size: 14, color: context.colors.text1),
             const SizedBox(width: 8),
             Text('Modifier',
+              style: TextStyle(
+                fontSize: 12,
+                color: context.colors.text1)),
+          ])),
+        PopupMenuItem(
+          value: 'members',
+          child: Row(children: [
+            Icon(Icons.group_outlined,
+              size: 14, color: context.colors.text1),
+            const SizedBox(width: 8),
+            Text('Gérer les membres',
               style: TextStyle(
                 fontSize: 12,
                 color: context.colors.text1)),
@@ -656,6 +670,17 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
       builder: (_) => _SprintsSheet(project: project, canManage: canManage),
+    );
+  }
+
+  void _showManageMembers(ProjectModel project) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: context.colors.bg2,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (_) => _ManageMembersSheet(project: project),
     );
   }
 
@@ -1142,6 +1167,266 @@ class _SprintsSheetState extends State<_SprintsSheet> {
                           },
                         ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+const _projectRoleLabels = {
+  'PROJECT_MANAGER': 'Chef de projet',
+  'TECH_LEAD': 'Lead technique',
+  'DEVELOPER': 'Développeur',
+  'DESIGNER': 'Designer',
+  'QA_ENGINEER': 'QA',
+};
+
+class _ManageMembersSheet extends StatefulWidget {
+  final ProjectModel project;
+  const _ManageMembersSheet({required this.project});
+
+  @override
+  State<_ManageMembersSheet> createState() => _ManageMembersSheetState();
+}
+
+class _ManageMembersSheetState extends State<_ManageMembersSheet> {
+  List<MemberModel> _members = [];
+  List<MemberModel> _allUsers = [];
+  bool _loading = true;
+  bool _busy = false;
+  int? _selectedUserId;
+  String _selectedRole = 'DEVELOPER';
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    try {
+      final members = await ApiService.getProjectMembers(widget.project.id);
+      final allUsers = await ApiService.getAllUsers();
+      if (!mounted) return;
+      setState(() {
+        _members = members;
+        _allUsers = allUsers;
+        _loading = false;
+        final candidates = _candidates;
+        if (_selectedUserId == null ||
+            !candidates.any((u) => u.id == _selectedUserId)) {
+          _selectedUserId = candidates.isNotEmpty ? candidates.first.id : null;
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(apiErrorMessage(e, fallback: 'Impossible de charger les membres')),
+        backgroundColor: context.colors.red,
+        behavior: SnackBarBehavior.floating,
+      ));
+    }
+  }
+
+  List<MemberModel> get _candidates => _allUsers
+      .where((u) => !_members.any((m) => m.id == u.id))
+      .toList();
+
+  Future<void> _addMember() async {
+    if (_selectedUserId == null) return;
+    setState(() => _busy = true);
+    try {
+      await ApiService.addMemberToProject(
+          widget.project.id, _selectedUserId!, _selectedRole);
+      await _load();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: const Text('Membre ajouté'),
+          backgroundColor: context.colors.green,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(apiErrorMessage(e, fallback: 'Impossible d\'ajouter ce membre')),
+          backgroundColor: context.colors.red,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _removeMember(MemberModel m) async {
+    setState(() => _busy = true);
+    try {
+      await ApiService.removeMemberFromProject(widget.project.id, m.id);
+      await _load();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('${m.fullName} retiré du projet'),
+          backgroundColor: context.colors.green,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(apiErrorMessage(e, fallback: 'Impossible de retirer ce membre')),
+          backgroundColor: context.colors.red,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final candidates = _candidates;
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.7,
+      minChildSize: 0.4,
+      maxChildSize: 0.9,
+      expand: false,
+      builder: (_, scrollController) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Membres — ${widget.project.name}',
+                style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                    color: context.colors.text1)),
+            const SizedBox(height: 14),
+            Expanded(
+              child: _loading
+                  ? Center(child: CircularProgressIndicator(color: context.colors.accent))
+                  : _members.isEmpty
+                      ? Center(
+                          child: Text('Aucun membre pour ce projet',
+                              style: TextStyle(color: context.colors.text2)))
+                      : ListView.builder(
+                          controller: scrollController,
+                          itemCount: _members.length,
+                          itemBuilder: (_, i) {
+                            final m = _members[i];
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                  color: context.colors.bg3,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: context.colors.border)),
+                              child: Row(children: [
+                                Container(
+                                    width: 30, height: 30,
+                                    decoration: BoxDecoration(
+                                        color: context.colors.accent.withOpacity(0.15),
+                                        shape: BoxShape.circle),
+                                    child: Center(child: Text(m.initials,
+                                        style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w700,
+                                            color: context.colors.accent)))),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(m.fullName,
+                                          style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: context.colors.text1)),
+                                      Text(m.email,
+                                          style: TextStyle(
+                                              fontSize: 10, color: context.colors.text2)),
+                                    ],
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: Icon(Icons.person_remove_outlined,
+                                      size: 16, color: context.colors.red),
+                                  onPressed: _busy ? null : () => _removeMember(m),
+                                ),
+                              ]),
+                            );
+                          },
+                        ),
+            ),
+            const SizedBox(height: 10),
+            if (!_loading)
+              Row(children: [
+                Expanded(
+                  flex: 3,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    decoration: BoxDecoration(
+                        color: context.colors.bg3,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: context.colors.border)),
+                    child: DropdownButton<int>(
+                      value: _selectedUserId,
+                      isExpanded: true,
+                      underline: const SizedBox(),
+                      dropdownColor: context.colors.bg3,
+                      hint: Text(
+                          candidates.isEmpty ? 'Aucun utilisateur disponible' : 'Choisir un utilisateur',
+                          style: TextStyle(fontSize: 12, color: context.colors.text2)),
+                      style: TextStyle(fontSize: 12, color: context.colors.text1),
+                      items: candidates
+                          .map((u) => DropdownMenuItem(
+                              value: u.id,
+                              child: Text(u.fullName, overflow: TextOverflow.ellipsis)))
+                          .toList(),
+                      onChanged: candidates.isEmpty
+                          ? null
+                          : (v) => setState(() => _selectedUserId = v),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 2,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    decoration: BoxDecoration(
+                        color: context.colors.bg3,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: context.colors.border)),
+                    child: DropdownButton<String>(
+                      value: _selectedRole,
+                      isExpanded: true,
+                      underline: const SizedBox(),
+                      dropdownColor: context.colors.bg3,
+                      style: TextStyle(fontSize: 12, color: context.colors.text1),
+                      items: _projectRoleLabels.entries
+                          .map((e) => DropdownMenuItem(
+                              value: e.key, child: Text(e.value)))
+                          .toList(),
+                      onChanged: (v) => setState(() => _selectedRole = v ?? _selectedRole),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: (_busy || candidates.isEmpty) ? null : _addMember,
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: context.colors.accent,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13)),
+                  child: const Icon(Icons.add, size: 18),
+                ),
+              ]),
           ],
         ),
       ),

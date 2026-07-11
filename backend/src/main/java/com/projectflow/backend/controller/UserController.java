@@ -24,8 +24,9 @@ public class UserController {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-    // GET /api/users — فقط MANAGER يقدر يشوف كل المستخدمين (Gérer les utilisateurs)
-    @PreAuthorize("hasRole('MANAGER')")
+    // GET /api/users — MANAGER (Gérer les utilisateurs) + CHEF_PROJET (choisir qui
+    // ajouter comme membre sur ses propres projets, cf. ProjectService.addMember)
+    @PreAuthorize("hasAnyRole('MANAGER','CHEF_PROJET')")
     @GetMapping
     public ResponseEntity<List<UserResponse>> getAllUsers() {
         List<UserResponse> users = userRepository.findAll()
