@@ -215,6 +215,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
   }
 
   Widget _buildTable() {
+    final mobile = isMobileWidth(context);
     return Container(
       decoration: BoxDecoration(
         color: context.colors.bg2,
@@ -240,51 +241,54 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                 fontSize: 10, color: context.colors.text2)),
           ]),
         ),
-        // Header
-        Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            border: Border(bottom: BorderSide(
-              color: context.colors.border, width: 0.5))),
-          child: Row(children: [
-            Expanded(flex: 3, child: Text('PROJET',
-              style: TextStyle(fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: context.colors.text2))),
-            Expanded(flex: 2, child: Text('RESPONSABLE',
-              style: TextStyle(fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: context.colors.text2))),
-            Expanded(child: Text('MEMBRES',
-              style: TextStyle(fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: context.colors.text2))),
-            Expanded(child: Text('TÂCHES',
-              style: TextStyle(fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: context.colors.text2))),
-            Expanded(child: Text('BUDGET',
-              style: TextStyle(fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: context.colors.text2))),
-            Expanded(flex: 2, child: Text('PROGRESSION',
-              style: TextStyle(fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: context.colors.text2))),
-            Expanded(child: Text('STATUT',
-              style: TextStyle(fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: context.colors.text2))),
-            const SizedBox(width: 34),
-            const SizedBox(width: 40),
-          ]),
-        ),
+        // Header (masqué sur mobile : remplacé par les cartes empilées ci-dessous)
+        if (!mobile)
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              border: Border(bottom: BorderSide(
+                color: context.colors.border, width: 0.5))),
+            child: Row(children: [
+              Expanded(flex: 3, child: Text('PROJET',
+                style: TextStyle(fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: context.colors.text2))),
+              Expanded(flex: 2, child: Text('RESPONSABLE',
+                style: TextStyle(fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: context.colors.text2))),
+              Expanded(child: Text('MEMBRES',
+                style: TextStyle(fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: context.colors.text2))),
+              Expanded(child: Text('TÂCHES',
+                style: TextStyle(fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: context.colors.text2))),
+              Expanded(child: Text('BUDGET',
+                style: TextStyle(fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: context.colors.text2))),
+              Expanded(flex: 2, child: Text('PROGRESSION',
+                style: TextStyle(fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: context.colors.text2))),
+              Expanded(child: Text('STATUT',
+                style: TextStyle(fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: context.colors.text2))),
+              const SizedBox(width: 34),
+              const SizedBox(width: 40),
+            ]),
+          ),
         if (_filtered.isEmpty)
           Padding(
             padding: const EdgeInsets.all(24),
             child: Text('Aucun projet trouvé',
               style: TextStyle(color: context.colors.text2)))
+        else if (mobile)
+          ..._filtered.map(_buildCard)
         else
           ..._filtered.map(_buildRow),
       ]),
@@ -294,7 +298,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
   Widget _buildRow(ProjectModel project) {
     final color = _statusColor(project.status);
     final progress = project.taskCount > 0
-      ? (project.taskCount * 0.6).clamp(0.0, 100.0) / 100
+      ? project.completedTaskCount / project.taskCount
       : 0.0;
 
     return Container(
@@ -377,64 +381,175 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
         ),
         SizedBox(
           width: 40,
-          // Le backend confirme le controle exact (owner/membre pour CHEF_PROJET) ;
-          // ici, si le projet apparait dans la liste d'un CHEF_PROJET, c'est deja qu'il
-          // est owner ou membre (getAllProjects le filtre deja ainsi cote backend).
-          child: (_userRole == 'MANAGER' || _userRole == 'CHEF_PROJET')
-            ? PopupMenuButton<String>(
-                color: context.colors.bg3,
-                icon: Icon(Icons.more_vert,
-                  size: 16, color: context.colors.text2),
-                onSelected: (v) {
-                  if (v == 'edit') {
-                    _showEditDialog(project);
-                  } else if (v == 'archive') {
-                    _archiveProject(project);
-                  } else if (v == 'delete') {
-                    _confirmDelete(project);
-                  }
-                },
-                itemBuilder: (_) => [
-                  PopupMenuItem(
-                    value: 'edit',
-                    child: Row(children: [
-                      Icon(Icons.edit_outlined,
-                        size: 14, color: context.colors.text1),
-                      const SizedBox(width: 8),
-                      Text('Modifier',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: context.colors.text1)),
-                    ])),
-                  PopupMenuItem(
-                    value: 'archive',
-                    child: Row(children: [
-                      Icon(
-                        project.archived
-                          ? Icons.unarchive_outlined
-                          : Icons.archive_outlined,
-                        size: 14, color: context.colors.text1),
-                      const SizedBox(width: 8),
-                      Text(project.archived ? 'Désarchiver' : 'Archiver',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: context.colors.text1)),
-                    ])),
-                  PopupMenuItem(
-                    value: 'delete',
-                    child: Row(children: [
-                      Icon(Icons.delete_outline,
-                        size: 14, color: context.colors.red),
-                      const SizedBox(width: 8),
-                      Text('Supprimer',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: context.colors.red)),
-                    ])),
-                ],
-              )
-            : const SizedBox()),
+          child: _popupMenu(project)),
       ]),
+    );
+  }
+
+  // Le backend confirme le controle exact (owner/membre pour CHEF_PROJET) ;
+  // ici, si le projet apparait dans la liste d'un CHEF_PROJET, c'est deja qu'il
+  // est owner ou membre (getAllProjects le filtre deja ainsi cote backend).
+  Widget _popupMenu(ProjectModel project) {
+    if (_userRole != 'MANAGER' && _userRole != 'CHEF_PROJET') {
+      return const SizedBox();
+    }
+    return PopupMenuButton<String>(
+      color: context.colors.bg3,
+      icon: Icon(Icons.more_vert,
+        size: 16, color: context.colors.text2),
+      onSelected: (v) {
+        if (v == 'edit') {
+          _showEditDialog(project);
+        } else if (v == 'archive') {
+          _archiveProject(project);
+        } else if (v == 'delete') {
+          _confirmDelete(project);
+        }
+      },
+      itemBuilder: (_) => [
+        PopupMenuItem(
+          value: 'edit',
+          child: Row(children: [
+            Icon(Icons.edit_outlined,
+              size: 14, color: context.colors.text1),
+            const SizedBox(width: 8),
+            Text('Modifier',
+              style: TextStyle(
+                fontSize: 12,
+                color: context.colors.text1)),
+          ])),
+        PopupMenuItem(
+          value: 'archive',
+          child: Row(children: [
+            Icon(
+              project.archived
+                ? Icons.unarchive_outlined
+                : Icons.archive_outlined,
+              size: 14, color: context.colors.text1),
+            const SizedBox(width: 8),
+            Text(project.archived ? 'Désarchiver' : 'Archiver',
+              style: TextStyle(
+                fontSize: 12,
+                color: context.colors.text1)),
+          ])),
+        PopupMenuItem(
+          value: 'delete',
+          child: Row(children: [
+            Icon(Icons.delete_outline,
+              size: 14, color: context.colors.red),
+            const SizedBox(width: 8),
+            Text('Supprimer',
+              style: TextStyle(
+                fontSize: 12,
+                color: context.colors.red)),
+          ])),
+      ],
+    );
+  }
+
+  /// Carte projet pour mobile : mêmes informations que la ligne de tableau
+  /// desktop (nom, responsable, membres, tâches, budget, progression,
+  /// statut) mais empilées verticalement pour éviter la colonne "STATUT"
+  /// trop étroite qui coupait "Planification" lettre par lettre.
+  Widget _buildCard(ProjectModel project) {
+    final color = _statusColor(project.status);
+    final progress = project.taskCount > 0
+      ? project.completedTaskCount / project.taskCount
+      : 0.0;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(
+          color: context.colors.border, width: 0.5))),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Expanded(child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(project.name, style: TextStyle(
+                  fontSize: 13, fontWeight: FontWeight.w700,
+                  color: context.colors.text1)),
+                if (project.description != null &&
+                    project.description!.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(project.description!,
+                      style: TextStyle(
+                        fontSize: 10, color: context.colors.text2),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis)),
+              ],
+            )),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(12)),
+              child: Text(_statusLabel(project.status),
+                style: TextStyle(
+                  fontSize: 10, fontWeight: FontWeight.w700,
+                  color: color))),
+            SizedBox(
+              width: 32,
+              child: IconButton(
+                padding: EdgeInsets.zero,
+                icon: Icon(Icons.view_agenda_outlined,
+                  size: 16, color: context.colors.text2),
+                tooltip: 'Sprints',
+                onPressed: () => _showSprints(project),
+              )),
+            SizedBox(width: 32, child: _popupMenu(project)),
+          ]),
+          const SizedBox(height: 10),
+          Row(children: [
+            Expanded(child: _cardStat('Responsable', project.ownerName)),
+            Expanded(child: _cardStat('Membres', '${project.memberCount}')),
+          ]),
+          const SizedBox(height: 8),
+          Row(children: [
+            Expanded(child: _cardStat('Tâches', '${project.taskCount}')),
+            Expanded(child: _cardStat('Budget',
+              project.budget != null
+                ? '${project.budget!.toStringAsFixed(0)}€'
+                : 'N/A')),
+          ]),
+          const SizedBox(height: 10),
+          Row(children: [
+            Expanded(child: ClipRRect(
+              borderRadius: BorderRadius.circular(2),
+              child: LinearProgressIndicator(
+                value: progress,
+                backgroundColor: context.colors.bg4,
+                valueColor: AlwaysStoppedAnimation(color),
+                minHeight: 5))),
+            const SizedBox(width: 8),
+            Text('${(progress * 100).toInt()}%',
+              style: TextStyle(
+                fontSize: 11, fontWeight: FontWeight.w700,
+                color: color)),
+          ]),
+        ],
+      ),
+    );
+  }
+
+  Widget _cardStat(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label.toUpperCase(), style: TextStyle(
+          fontSize: 9, fontWeight: FontWeight.w700,
+          color: context.colors.text2, letterSpacing: 0.05)),
+        const SizedBox(height: 2),
+        Text(value, style: TextStyle(
+          fontSize: 12, fontWeight: FontWeight.w600,
+          color: context.colors.text1),
+          overflow: TextOverflow.ellipsis),
+      ],
     );
   }
 

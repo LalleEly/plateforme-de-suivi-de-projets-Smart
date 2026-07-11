@@ -101,13 +101,29 @@ public class KpiService {
     }
 
     public List<MemberKpiResponse> getMemberKpis(Long projectId) {
-        List<ProjectMember> members = memberRepository.findByProject_Id(projectId);
-        return members.stream().map(pm -> {
-            User user = pm.getUser();
-            List<Task> assigned = taskRepository.findByAssignee_Id(user.getId());
+        // Union des ProjectMember officiels + de quiconque a une tache assignee
+        // dans ce projet : un owner solo qui n'a jamais ete ajoute comme membre
+        // (cas frequent avant l'ajout automatique a la creation) aurait sinon
+        // une liste vide malgre du vrai travail assigne.
+        List<Task> projectTasks = taskRepository.findByProject_Id(projectId);
+
+        Map<Long, User> users = new LinkedHashMap<>();
+        for (ProjectMember pm : memberRepository.findByProject_Id(projectId)) {
+            users.put(pm.getUser().getId(), pm.getUser());
+        }
+        for (Task t : projectTasks) {
+            if (t.getAssignee() != null) {
+                users.put(t.getAssignee().getId(), t.getAssignee());
+            }
+        }
+
+        return users.values().stream().map(user -> {
+            List<Task> assigned = taskRepository.findByProject_IdAndAssignee_Id(
+                projectId, user.getId());
             long completed = assigned.stream()
                 .filter(t -> t.getStatus() == TaskStatus.DONE).count();
-            int minutes = timeLogRepository.sumMinutesByUserId(user.getId());
+            int minutes = timeLogRepository.sumMinutesByUserIdAndProjectId(
+                user.getId(), projectId);
             int hours = minutes / 60;
             int capacity = 40;
             double workload = Math.min(Math.round(hours * 100.0 / capacity), 100);

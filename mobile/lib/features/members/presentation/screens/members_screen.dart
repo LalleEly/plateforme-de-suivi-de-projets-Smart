@@ -224,6 +224,7 @@ class _MembersScreenState extends State<MembersScreen> {
 
   Widget _buildTable() {
     final list = _filtered;
+    final mobile = isMobileWidth(context);
 
     return Container(
       decoration: BoxDecoration(
@@ -231,30 +232,34 @@ class _MembersScreenState extends State<MembersScreen> {
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: context.colors.border, width: 0.5)),
       child: Column(children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(
-              border: Border(bottom: BorderSide(color: context.colors.border, width: 0.5))),
-          child: Row(children: [
-            Expanded(flex: 3, child: Text('MEMBRE',
-                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: context.colors.text2))),
-            Expanded(flex: 2, child: Text('EMAIL',
-                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: context.colors.text2))),
-            Expanded(flex: 2, child: Text('RÔLE',
-                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: context.colors.text2))),
-            Expanded(child: Text('STATUT',
-                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: context.colors.text2))),
-          ]),
-        ),
+        // Header (masqué sur mobile : remplacé par les cartes empilées ci-dessous)
+        if (!mobile)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+                border: Border(bottom: BorderSide(color: context.colors.border, width: 0.5))),
+            child: Row(children: [
+              Expanded(flex: 3, child: Text('MEMBRE',
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: context.colors.text2))),
+              Expanded(flex: 2, child: Text('EMAIL',
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: context.colors.text2))),
+              Expanded(flex: 2, child: Text('RÔLE',
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: context.colors.text2))),
+              Expanded(child: Text('STATUT',
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: context.colors.text2))),
+            ]),
+          ),
 
         if (list.isEmpty)
           Padding(
             padding: const EdgeInsets.all(32),
             child: Text('Aucun membre trouvé',
                 style: TextStyle(fontSize: 13, color: context.colors.text2)),
-          ),
-
-        ...list.map((m) => InkWell(
+          )
+        else if (mobile)
+          ...list.map(_buildMemberCard)
+        else
+          ...list.map((m) => InkWell(
           onTap: () => _showMemberTasks(m),
           child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -318,6 +323,79 @@ class _MembersScreenState extends State<MembersScreen> {
           ]),
         ))),
       ]),
+    );
+  }
+
+  /// Carte membre pour mobile : mêmes informations que la ligne de tableau
+  /// desktop (avatar+nom, email, rôle, statut) mais empilées verticalement.
+  Widget _buildMemberCard(MemberModel m) {
+    return InkWell(
+      onTap: () => _showMemberTasks(m),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+            border: Border(bottom: BorderSide(color: context.colors.border, width: 0.5))),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Container(
+              width: 32, height: 32,
+              decoration: BoxDecoration(
+                  color: _roleColor(m.globalRole).withOpacity(0.15),
+                  shape: BoxShape.circle),
+              child: Center(child: Text(m.initials,
+                  style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: _roleColor(m.globalRole)))),
+            ),
+            const SizedBox(width: 10),
+            Expanded(child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(m.fullName,
+                    style: TextStyle(
+                        fontSize: 13, fontWeight: FontWeight.w600, color: context.colors.text1),
+                    overflow: TextOverflow.ellipsis),
+                Text(m.email,
+                    style: TextStyle(fontSize: 11, color: context.colors.text2),
+                    overflow: TextOverflow.ellipsis),
+              ],
+            )),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+              decoration: BoxDecoration(
+                  color: m.active
+                      ? context.colors.green.withOpacity(0.1)
+                      : context.colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12)),
+              child: Text(m.active ? 'Actif' : 'Inactif',
+                  style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                      color: m.active ? context.colors.green : context.colors.red)),
+            ),
+          ]),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+                color: _roleColor(m.globalRole).withOpacity(0.12),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                    color: _roleColor(m.globalRole).withOpacity(0.3))),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(_roleIcon(m.globalRole),
+                  size: 10, color: _roleColor(m.globalRole)),
+              const SizedBox(width: 4),
+              Text(m.globalRole.replaceAll('_', ' '),
+                  style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                      color: _roleColor(m.globalRole))),
+            ]),
+          ),
+        ]),
+      ),
     );
   }
 

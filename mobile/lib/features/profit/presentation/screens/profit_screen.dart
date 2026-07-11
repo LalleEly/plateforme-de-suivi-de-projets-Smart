@@ -329,6 +329,7 @@ class _ProfitScreenState extends State<ProfitScreen> {
 
   Widget _buildProjectTable() {
     final projects = _visibleProjectKpis;
+    final mobile = isMobileWidth(context);
 
     return Container(
       decoration: BoxDecoration(
@@ -344,33 +345,36 @@ class _ProfitScreenState extends State<ProfitScreen> {
               style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
                   color: context.colors.text2, letterSpacing: 0.07)),
         ),
-        // En-têtes
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-              border: Border(bottom: BorderSide(color: context.colors.border, width: 0.5))),
-          child: Row(children: [
-            Expanded(flex: 3, child: Text('PROJET',
-                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: context.colors.text2))),
-            Expanded(flex: 2, child: Text('COMPLÉTION',
-                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: context.colors.text2))),
-            Expanded(child: Text('HEURES',
-                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: context.colors.text2))),
-            Expanded(child: Text('RENTABILITÉ',
-                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: context.colors.text2))),
-            Expanded(child: Text('STATUT',
-                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: context.colors.text2))),
-          ]),
-        ),
+        // En-têtes (masqués sur mobile : remplacés par les cartes empilées ci-dessous)
+        if (!mobile)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+                border: Border(bottom: BorderSide(color: context.colors.border, width: 0.5))),
+            child: Row(children: [
+              Expanded(flex: 3, child: Text('PROJET',
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: context.colors.text2))),
+              Expanded(flex: 2, child: Text('COMPLÉTION',
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: context.colors.text2))),
+              Expanded(child: Text('HEURES',
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: context.colors.text2))),
+              Expanded(child: Text('RENTABILITÉ',
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: context.colors.text2))),
+              Expanded(child: Text('STATUT',
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: context.colors.text2))),
+            ]),
+          ),
 
         if (projects.isEmpty)
           Padding(
             padding: const EdgeInsets.all(32),
             child: Text('Aucun projet disponible',
                 style: TextStyle(fontSize: 13, color: context.colors.text2)),
-          ),
-
-        ...projects.map((p) {
+          )
+        else if (mobile)
+          ...projects.map(_buildProjectCard)
+        else
+          ...projects.map((p) {
           final profitColor = p.profitability >= 0 ? context.colors.green : context.colors.red;
           final profitSign = p.profitability >= 0 ? '+' : '';
 
@@ -425,6 +429,75 @@ class _ProfitScreenState extends State<ProfitScreen> {
           );
         }),
       ]),
+    );
+  }
+
+  /// Carte projet pour mobile : mêmes informations que la ligne de tableau
+  /// desktop (nom, complétion, heures, rentabilité, statut) mais empilées
+  /// verticalement pour éviter la colonne "STATUT" trop étroite.
+  Widget _buildProjectCard(ProjectKpiModel p) {
+    final profitColor = p.profitability >= 0 ? context.colors.green : context.colors.red;
+    final profitSign = p.profitability >= 0 ? '+' : '';
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: context.colors.border, width: 0.5))),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Expanded(child: Text(p.projectName,
+              style: TextStyle(fontSize: 13,
+                  fontWeight: FontWeight.w700, color: context.colors.text1),
+              overflow: TextOverflow.ellipsis)),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+                color: p.onSchedule
+                    ? context.colors.green.withOpacity(0.1)
+                    : context.colors.amber.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12)),
+            child: Text(p.onSchedule ? 'Dans les délais' : 'En retard',
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
+                    color: p.onSchedule ? context.colors.green : context.colors.amber)),
+          ),
+        ]),
+        const SizedBox(height: 10),
+        Row(children: [
+          Expanded(flex: 2, child: _profitStat('Heures', '${p.loggedHours}h', context.colors.text1)),
+          Expanded(child: _profitStat('Rentabilité',
+              '$profitSign${p.profitability.toStringAsFixed(1)}%', profitColor)),
+        ]),
+        const SizedBox(height: 10),
+        Row(children: [
+          Expanded(child: ClipRRect(
+            borderRadius: BorderRadius.circular(2),
+            child: LinearProgressIndicator(
+              value: p.completionRate / 100,
+              backgroundColor: context.colors.bg4,
+              valueColor: AlwaysStoppedAnimation(context.colors.accent),
+              minHeight: 5,
+            ),
+          )),
+          const SizedBox(width: 8),
+          Text('${p.completionRate.toStringAsFixed(0)}%',
+              style: TextStyle(fontSize: 11,
+                  fontWeight: FontWeight.w700, color: context.colors.accent)),
+        ]),
+      ]),
+    );
+  }
+
+  Widget _profitStat(String label, String value, Color color) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label.toUpperCase(), style: TextStyle(
+          fontSize: 9, fontWeight: FontWeight.w700,
+          color: context.colors.text2, letterSpacing: 0.05)),
+        const SizedBox(height: 2),
+        Text(value, style: TextStyle(
+          fontSize: 12, fontWeight: FontWeight.w700, color: color)),
+      ],
     );
   }
 

@@ -9,6 +9,7 @@ class ProjectModel {
   final double? budget;
   final int memberCount;
   final int taskCount;
+  final int completedTaskCount;
   final bool archived;
   final String? createdAt;
 
@@ -23,6 +24,7 @@ class ProjectModel {
     this.budget,
     required this.memberCount,
     required this.taskCount,
+    this.completedTaskCount = 0,
     this.archived = false,
     this.createdAt,
   });
@@ -39,6 +41,7 @@ class ProjectModel {
       budget: json['budget']?.toDouble(),
       memberCount: json['memberCount'] ?? 0,
       taskCount: json['taskCount'] ?? 0,
+      completedTaskCount: json['completedTaskCount'] ?? 0,
       archived: json['archived'] ?? false,
       createdAt: json['createdAt'],
     );

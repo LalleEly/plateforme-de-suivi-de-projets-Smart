@@ -23,6 +23,7 @@ public class ProjectResponse {
     private BigDecimal hourlyRate;
     private int memberCount;
     private int taskCount;
+    private int completedTaskCount;
     private boolean archived;
     private LocalDateTime createdAt;
 }

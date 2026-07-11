@@ -255,7 +255,26 @@ class _KpiScreenState extends State<KpiScreen> {
                 alignment: BarChartAlignment.spaceAround,
                 maxY: 100,
                 minY: 0,
-                barTouchData: BarTouchData(enabled: true),
+                // Étiquette % toujours affichée au-dessus de la barre (pas
+                // seulement au survol) : sinon un vrai 0% (projet sans tâche
+                // terminée) est visuellement indiscernable d'un graphe cassé.
+                barTouchData: BarTouchData(
+                  enabled: true,
+                  handleBuiltInTouches: false,
+                  touchTooltipData: BarTouchTooltipData(
+                    getTooltipColor: (_) => Colors.transparent,
+                    tooltipPadding: EdgeInsets.zero,
+                    tooltipMargin: 6,
+                    getTooltipItem: (group, groupIndex, rod, rodIndex) =>
+                        BarTooltipItem(
+                      '${rod.toY.toInt()}%',
+                      TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                        color: context.colors.text1),
+                    ),
+                  ),
+                ),
                 titlesData: FlTitlesData(
                   leftTitles: AxisTitles(
                     sideTitles: SideTitles(
@@ -296,17 +315,21 @@ class _KpiScreenState extends State<KpiScreen> {
                     .toList()
                     .asMap()
                     .entries
-                    .map((e) => BarChartGroupData(x: e.key, barRods: [
-                          BarChartRodData(
-                            toY: e.value.completionRate,
-                            color: e.value.onSchedule
-                                ? context.colors.accent
-                                : context.colors.red,
-                            width: 22,
-                            borderRadius: const BorderRadius.vertical(
-                                top: Radius.circular(4)),
-                          ),
-                        ]))
+                    .map((e) => BarChartGroupData(
+                          x: e.key,
+                          showingTooltipIndicators: const [0],
+                          barRods: [
+                            BarChartRodData(
+                              toY: e.value.completionRate,
+                              color: e.value.onSchedule
+                                  ? context.colors.accent
+                                  : context.colors.red,
+                              width: 22,
+                              borderRadius: const BorderRadius.vertical(
+                                  top: Radius.circular(4)),
+                            ),
+                          ],
+                        ))
                     .toList(),
               )),
             ),

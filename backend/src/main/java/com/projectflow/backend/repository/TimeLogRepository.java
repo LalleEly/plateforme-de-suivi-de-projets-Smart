@@ -18,4 +18,9 @@ public interface TimeLogRepository extends JpaRepository<TimeLog, Long> {
 
     @Query("SELECT COALESCE(SUM(t.minutes), 0) FROM TimeLog t WHERE t.user.id = :userId")
     int sumMinutesByUserId(@Param("userId") Long userId);
+
+    @Query("SELECT COALESCE(SUM(t.minutes), 0) FROM TimeLog t " +
+        "WHERE t.user.id = :userId AND t.task.project.id = :projectId")
+    int sumMinutesByUserIdAndProjectId(
+        @Param("userId") Long userId, @Param("projectId") Long projectId);
 }

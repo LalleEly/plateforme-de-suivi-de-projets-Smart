@@ -398,9 +398,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       'COMPLETED': context.colors.cyan,
     };
     final color = colors[project.status] ?? context.colors.red;
-    final total = project.taskCount > 0 ? project.taskCount : 1;
-    final done = (total * 0.6).round();
-    final progress = done / total;
+    final progress = project.taskCount > 0
+        ? project.completedTaskCount / project.taskCount
+        : 0.0;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),

@@ -4,7 +4,9 @@ import com.projectflow.backend.domain.entity.Project;
 import com.projectflow.backend.domain.entity.ProjectMember;
 import com.projectflow.backend.domain.entity.User;
 import com.projectflow.backend.domain.enums.GlobalRole;
+import com.projectflow.backend.domain.enums.ProjectRole;
 import com.projectflow.backend.domain.enums.ProjectStatus;
+import com.projectflow.backend.domain.enums.TaskStatus;
 import com.projectflow.backend.dto.request.AddMemberRequest;
 import com.projectflow.backend.dto.request.CreateProjectRequest;
 import com.projectflow.backend.dto.request.UpdateProjectRequest;
@@ -52,7 +54,18 @@ public class ProjectService {
             .hourlyRate(request.getHourlyRate())
             .build();
 
-        return toResponse(projectRepository.save(project));
+        Project saved = projectRepository.save(project);
+
+        // Sans ceci, un owner solo qui travaille seul sur son projet n'a aucune
+        // ligne project_members : les KPI "Performance Membres" le montrent
+        // comme vide alors qu'il a du vrai travail assigne.
+        memberRepository.save(ProjectMember.builder()
+            .project(saved)
+            .user(owner)
+            .role(ProjectRole.PROJECT_MANAGER)
+            .build());
+
+        return toResponse(saved);
     }
 
     public List<ProjectResponse> getMyProjects(String email) {
@@ -219,6 +232,8 @@ public class ProjectService {
             .hourlyRate(p.getHourlyRate())
             .memberCount(p.getMembers().size())
             .taskCount(p.getTasks().size())
+            .completedTaskCount((int) p.getTasks().stream()
+                .filter(t -> t.getStatus() == TaskStatus.DONE).count())
             .archived(p.isArchived())
             .createdAt(p.getCreatedAt())
             .build();
