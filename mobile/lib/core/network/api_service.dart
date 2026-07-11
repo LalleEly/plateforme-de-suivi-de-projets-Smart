@@ -26,9 +26,13 @@ class ApiService {
     return 'http://localhost:8080/api';
   }
 
+  // Timeouts genereux : les hebergeurs gratuits (ex. Render free tier) mettent
+  // le backend en veille apres inactivite et peuvent prendre 30-50s a se
+  // reveiller sur la premiere requete — un timeout court transforme a tort
+  // ce reveil en echec (ex. "mot de passe incorrect" alors que c'est un timeout).
   static final Dio _dio = Dio(BaseOptions(
-    connectTimeout: const Duration(seconds: 10),
-    receiveTimeout: const Duration(seconds: 15),
+    connectTimeout: const Duration(seconds: 60),
+    receiveTimeout: const Duration(seconds: 60),
     headers: {'Content-Type': 'application/json'},
   ));
 

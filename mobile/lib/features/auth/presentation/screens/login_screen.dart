@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/network/api_service.dart';
 import '../../../../core/storage/storage_service.dart';
@@ -82,9 +83,17 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } catch (e) {
       setState(() {
-        _error = _isLogin
-            ? l10n.errorLoginFailed
-            : l10n.errorRegisterFailed;
+        // Une DioException sans reponse HTTP (timeout, DNS, CORS, reseau) n'a
+        // rien a voir avec des identifiants invalides — l'afficher comme tel
+        // evite d'induire l'utilisateur en erreur (ex. lors du reveil a froid
+        // d'un backend sur offre gratuite, qui peut prendre 30-50s).
+        if (e is DioException && e.response == null) {
+          _error = 'Impossible de contacter le serveur. Il est peut-être en '
+              'train de démarrer (offre gratuite) — réessayez dans '
+              'quelques instants.';
+        } else {
+          _error = _isLogin ? l10n.errorLoginFailed : l10n.errorRegisterFailed;
+        }
       });
     } finally {
       if (mounted) setState(() => _loading = false);
