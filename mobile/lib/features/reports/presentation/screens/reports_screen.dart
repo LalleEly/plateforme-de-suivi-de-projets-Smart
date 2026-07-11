@@ -12,6 +12,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/save_bytes.dart';
 import '../../../../shared/models/kpi_model.dart';
 import '../../../../shared/models/project_model.dart';
+import '../../../../core/utils/responsive.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -320,11 +321,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
               child: Column(children: [
                 if (_error != null) _buildBanner(_error!, context.colors.red, Icons.error_outline),
                 if (_success != null) _buildBanner(_success!, context.colors.green, Icons.check_circle_outline),
-                Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Expanded(child: _buildGenerateForm()),
-                  const SizedBox(width: 14),
-                  Expanded(child: _buildSummary()),
-                ]),
+                ResponsivePanels(
+                    children: [_buildGenerateForm(), _buildSummary()]),
               ]),
             ),
       ),

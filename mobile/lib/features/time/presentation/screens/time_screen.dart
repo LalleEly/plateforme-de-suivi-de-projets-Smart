@@ -6,6 +6,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/models/project_model.dart';
 import '../../../../shared/models/task_model.dart';
 import '../../../../shared/models/time_log_model.dart';
+import '../../../../core/utils/responsive.dart';
 
 class TimeScreen extends StatefulWidget {
   const TimeScreen({super.key});
@@ -154,11 +155,7 @@ class _TimeScreenState extends State<TimeScreen> {
               child: Column(children: [
                 if (_error != null) _buildBanner(_error!, context.colors.red, Icons.error_outline),
                 if (_success != null) _buildBanner(_success!, context.colors.green, Icons.check_circle_outline),
-                Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Expanded(child: _buildForm()),
-                  const SizedBox(width: 12),
-                  Expanded(child: _buildWeekChart()),
-                ]),
+                ResponsivePanels(children: [_buildForm(), _buildWeekChart()]),
                 const SizedBox(height: 14),
                 _buildHistory(),
               ]),

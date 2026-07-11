@@ -3,6 +3,7 @@ import '../../../../core/network/api_error.dart';
 import '../../../../core/network/api_service.dart';
 import '../../../../core/storage/storage_service.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/responsive.dart';
 import '../../../../shared/models/kpi_model.dart';
 import '../../../../shared/models/project_model.dart';
 import '../../../../shared/models/task_model.dart';
@@ -109,20 +110,51 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final mobile = isMobileWidth(context);
+    final body = _loading
+        ? Center(child: CircularProgressIndicator(color: context.colors.accent))
+        : _error != null
+            ? _buildError()
+            : _buildContent();
+
+    if (mobile) {
+      // Navigation mobile : menu tiroir masque par defaut, ouvert via l'icone
+      // hamburger auto-ajoutee par Scaffold quand `drawer` + `appBar` sont
+      // fournis. Un tap sur un item ferme le tiroir et navigue, comme sur
+      // n'importe quelle app mobile.
+      return Scaffold(
+        backgroundColor: context.colors.bg,
+        appBar: AppBar(
+          backgroundColor: context.colors.bg2,
+          title: Text(_currentPageTitle,
+              style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: context.colors.text1)),
+        ),
+        drawer: Drawer(
+          backgroundColor: context.colors.bg2,
+          child: SafeArea(child: _buildSidebar(asDrawer: true)),
+        ),
+        body: body,
+      );
+    }
+
+    // Tablette/desktop : barre laterale fixe, comme avant.
     return Scaffold(
       backgroundColor: context.colors.bg,
       body: Row(children: [
-        _buildSidebar(),
-        Expanded(
-          child: _loading
-              ? Center(
-                  child: CircularProgressIndicator(color: context.colors.accent))
-              : _error != null
-                  ? _buildError()
-                  : _buildContent(),
-        ),
+        _buildSidebar(asDrawer: false),
+        Expanded(child: body),
       ]),
     );
+  }
+
+  String get _currentPageTitle {
+    for (final n in _navDefs) {
+      if (n.index == _selectedIndex) return n.label;
+    }
+    return 'ProjectFlow';
   }
 
   Widget _buildError() {
@@ -145,12 +177,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildSidebar() {
+  Widget _buildSidebar({required bool asDrawer}) {
     final visible = _visibleNav;
     final sections = ['Principal', 'Analyse', 'Équipe', 'Système'];
 
     return Container(
-      width: 220,
+      width: asDrawer ? null : 220,
       color: context.colors.bg2,
       child: Column(children: [
         // Logo
@@ -230,7 +262,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   _sectionLabel(section),
                   ...visible
                       .where((n) => n.section == section)
-                      .map((n) => _navRow(n)),
+                      .map((n) => _navRow(n, asDrawer: asDrawer)),
                 ],
               ],
             ],
@@ -309,10 +341,14 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _navRow(_NavDef nav) {
+  Widget _navRow(_NavDef nav, {required bool asDrawer}) {
     final isActive = _selectedIndex == nav.index;
     return GestureDetector(
-      onTap: () => setState(() => _selectedIndex = nav.index),
+      onTap: () {
+        setState(() => _selectedIndex = nav.index);
+        // Ferme le tiroir apres selection, comme sur une app mobile normale.
+        if (asDrawer) Navigator.pop(context);
+      },
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),

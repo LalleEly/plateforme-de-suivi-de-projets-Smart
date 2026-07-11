@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/network/api_service.dart';
+import '../../../../core/utils/responsive.dart';
 import '../../../../core/storage/storage_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/network/api_error.dart';
@@ -174,20 +175,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 _buildKpiCards(),
                 const SizedBox(height: 12),
               ],
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              ResponsivePanels(
                 children: [
-                  Expanded(child: _buildProjects()),
-                  const SizedBox(width: 12),
-                  Expanded(
-                      child: Column(children: [
+                  _buildProjects(),
+                  Column(children: [
                     // Charge équipe غير لـ MANAGER/CHEF_PROJET (نفس صلاحية /kpi/members)
                     if (_canCreateProject) ...[
                       _buildTeamLoad(),
                       const SizedBox(height: 12),
                     ],
                     _buildAlerts(),
-                  ])),
+                  ]),
                 ],
               ),
             ]),
@@ -296,17 +294,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Icons.access_time_outlined),
     ];
 
-    return Row(
-        children: items
-            .asMap()
-            .entries
-            .map((e) => Expanded(
-                    child: Padding(
-                  padding:
-                      EdgeInsets.only(right: e.key < items.length - 1 ? 8 : 0),
-                  child: _kpiCard(e.value),
-                )))
-            .toList());
+    return ResponsivePanels(
+      spacing: 8,
+      children: items.map(_kpiCard).toList(),
+    );
   }
 
   Widget _kpiCard(_KpiData item) {

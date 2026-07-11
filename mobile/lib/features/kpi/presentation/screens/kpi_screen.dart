@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../../../core/network/api_error.dart';
+import '../../../../core/utils/responsive.dart';
 import '../../../../core/network/api_service.dart';
 import '../../../../core/storage/storage_service.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -83,13 +84,8 @@ class _KpiScreenState extends State<KpiScreen> {
                     child: Column(children: [
                       _buildStatCards(),
                       const SizedBox(height: 14),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(child: _buildBarChart()),
-                          const SizedBox(width: 12),
-                          Expanded(child: _buildScoreTable()),
-                        ],
+                      ResponsivePanels(
+                        children: [_buildBarChart(), _buildScoreTable()],
                       ),
                       const SizedBox(height: 14),
                       _buildMemberPerf(),
@@ -175,64 +171,48 @@ class _KpiScreenState extends State<KpiScreen> {
           Icons.warning_amber_rounded),
     ];
 
-    return Row(
-        children: cards
-            .asMap()
-            .entries
-            .map((e) => Expanded(
-                    child: Padding(
-                  padding:
-                      EdgeInsets.only(right: e.key < cards.length - 1 ? 8 : 0),
-                  child: Container(
-                    padding: const EdgeInsets.all(13),
-                    decoration: BoxDecoration(
-                        color: context.colors.bg2,
-                        borderRadius: BorderRadius.circular(10),
-                        border:
-                            Border.all(color: context.colors.border, width: 0.5)),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                            width: 34,
-                            height: 34,
-                            decoration: BoxDecoration(
-                                color: e.value.color.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8)),
-                            child: Icon(e.value.icon,
-                                color: e.value.color, size: 17)),
-                        const SizedBox(height: 8),
-                        Text(e.value.value,
-                            style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w700,
-                                color: e.value.color)),
-                        const SizedBox(height: 1),
-                        Text(e.value.label,
-                            style: TextStyle(
-                                fontSize: 10, color: context.colors.text2)),
-                        const SizedBox(height: 5),
-                        Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 7, vertical: 2),
-                            decoration: BoxDecoration(
-                                color: (e.value.isUp
-                                        ? context.colors.green
-                                        : context.colors.red)
-                                    .withOpacity(0.12),
-                                borderRadius: BorderRadius.circular(16)),
-                            child: Text(e.value.delta,
-                                style: TextStyle(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w600,
-                                    color: e.value.isUp
-                                        ? context.colors.green
-                                        : context.colors.red))),
-                      ],
-                    ),
-                  ),
-                )))
-            .toList());
+    return ResponsivePanels(spacing: 8, children: cards.map(_statCard).toList());
+  }
+
+  Widget _statCard(_KpiCard c) {
+    return Container(
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+          color: context.colors.bg2,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: context.colors.border, width: 0.5)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                  color: c.color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8)),
+              child: Icon(c.icon, color: c.color, size: 17)),
+          const SizedBox(height: 8),
+          Text(c.value,
+              style: TextStyle(
+                  fontSize: 22, fontWeight: FontWeight.w700, color: c.color)),
+          const SizedBox(height: 1),
+          Text(c.label,
+              style: TextStyle(fontSize: 10, color: context.colors.text2)),
+          const SizedBox(height: 5),
+          Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+              decoration: BoxDecoration(
+                  color: (c.isUp ? context.colors.green : context.colors.red)
+                      .withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(16)),
+              child: Text(c.delta,
+                  style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w600,
+                      color: c.isUp ? context.colors.green : context.colors.red))),
+        ],
+      ),
+    );
   }
 
   // ── Bar chart: تقدم كل مشروع حقيقي (ماشي بيانات شهرية وهمية) ──

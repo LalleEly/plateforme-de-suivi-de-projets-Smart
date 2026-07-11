@@ -5,6 +5,7 @@ import '../../../../core/storage/storage_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/models/member_model.dart';
 import '../../../../shared/models/task_model.dart';
+import '../../../../core/utils/responsive.dart';
 
 class MembersScreen extends StatefulWidget {
   const MembersScreen({super.key});
@@ -150,18 +151,15 @@ class _MembersScreenState extends State<MembersScreen> {
     final managers = _members.where((m) => m.globalRole == 'MANAGER').length;
     final chefs = _members.where((m) => m.globalRole == 'CHEF_PROJET').length;
 
-    return Row(children: [
-      Expanded(child: _statCard(Icons.people_outline,
-          '${_members.length}', 'Total membres', context.colors.purple)),
-      const SizedBox(width: 10),
-      Expanded(child: _statCard(Icons.person_outline,
-          '$_totalActive', 'Actifs', context.colors.green)),
-      const SizedBox(width: 10),
-      Expanded(child: _statCard(Icons.admin_panel_settings_outlined,
-          '$managers', 'Managers', context.colors.red)),
-      const SizedBox(width: 10),
-      Expanded(child: _statCard(Icons.manage_accounts_outlined,
-          '$chefs', 'Chefs projet', context.colors.accent)),
+    return ResponsivePanels(spacing: 10, children: [
+      _statCard(Icons.people_outline,
+          '${_members.length}', 'Total membres', context.colors.purple),
+      _statCard(Icons.person_outline,
+          '$_totalActive', 'Actifs', context.colors.green),
+      _statCard(Icons.admin_panel_settings_outlined,
+          '$managers', 'Managers', context.colors.red),
+      _statCard(Icons.manage_accounts_outlined,
+          '$chefs', 'Chefs projet', context.colors.accent),
     ]);
   }
 
