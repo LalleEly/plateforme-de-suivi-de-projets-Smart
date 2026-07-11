@@ -65,6 +65,54 @@ class _MembersScreenState extends State<MembersScreen> {
     }
   }
 
+  Future<void> _changeRole(MemberModel m, String newRole) async {
+    try {
+      await ApiService.updateUserRole(m.id, newRole);
+      _load();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('${m.fullName} est maintenant ${newRole == 'CHEF_PROJET' ? 'Chef de projet' : 'Membre'}'),
+          backgroundColor: context.colors.green,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(apiErrorMessage(e, fallback: 'Impossible de modifier le rôle')),
+          backgroundColor: context.colors.red,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    }
+  }
+
+  // MANAGER seulement, et jamais sur un autre MANAGER (memes garde-fous que le
+  // backend UserController.updateRole) — bascule MEMBRE <-> CHEF_PROJET.
+  Widget _roleMenu(MemberModel m) {
+    if (_userRole != 'MANAGER' || m.globalRole == 'MANAGER') {
+      return const SizedBox();
+    }
+    return PopupMenuButton<String>(
+      color: context.colors.bg3,
+      icon: Icon(Icons.swap_horiz, size: 16, color: context.colors.text2),
+      tooltip: 'Changer le rôle',
+      onSelected: (role) => _changeRole(m, role),
+      itemBuilder: (_) => [
+        if (m.globalRole != 'CHEF_PROJET')
+          PopupMenuItem(
+            value: 'CHEF_PROJET',
+            child: Text('Promouvoir Chef de projet',
+                style: TextStyle(fontSize: 12, color: context.colors.text1))),
+        if (m.globalRole != 'MEMBRE')
+          PopupMenuItem(
+            value: 'MEMBRE',
+            child: Text('Rétrograder Membre',
+                style: TextStyle(fontSize: 12, color: context.colors.text1))),
+      ],
+    );
+  }
+
   Future<void> _showMemberTasks(MemberModel member) async {
     showModalBottomSheet(
       context: context,
@@ -249,6 +297,7 @@ class _MembersScreenState extends State<MembersScreen> {
                   style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: context.colors.text2))),
               Expanded(child: Text('STATUT',
                   style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: context.colors.text2))),
+              if (_userRole == 'MANAGER') const SizedBox(width: 34),
             ]),
           ),
 
@@ -322,6 +371,8 @@ class _MembersScreenState extends State<MembersScreen> {
                       fontWeight: FontWeight.w700,
                       color: m.active ? context.colors.green : context.colors.red)),
             )),
+            if (_userRole == 'MANAGER')
+              SizedBox(width: 34, child: _roleMenu(m)),
           ]),
         ))),
       ]),
@@ -376,6 +427,7 @@ class _MembersScreenState extends State<MembersScreen> {
                       fontWeight: FontWeight.w700,
                       color: m.active ? context.colors.green : context.colors.red)),
             ),
+            if (_userRole == 'MANAGER') _roleMenu(m),
           ]),
           const SizedBox(height: 10),
           Container(

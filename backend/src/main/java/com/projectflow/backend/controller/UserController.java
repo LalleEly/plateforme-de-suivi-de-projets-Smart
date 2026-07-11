@@ -1,7 +1,9 @@
 package com.projectflow.backend.controller;
 
 import com.projectflow.backend.domain.entity.User;
+import com.projectflow.backend.domain.enums.GlobalRole;
 import com.projectflow.backend.dto.request.ChangePasswordRequest;
+import com.projectflow.backend.dto.request.UpdateRoleRequest;
 import com.projectflow.backend.dto.response.UserResponse;
 import com.projectflow.backend.repository.UserRepository;
 import jakarta.validation.Valid;
@@ -51,6 +53,30 @@ public class UserController {
     public ResponseEntity<UserResponse> getUserById(@PathVariable Long id) {
         User user = userRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé : " + id));
+        return ResponseEntity.ok(toResponse(user));
+    }
+
+    // PATCH /api/users/{id}/role — MANAGER uniquement, promotion/retrogradation
+    // entre MEMBRE et CHEF_PROJET seulement (pas de gestion du role MANAGER
+    // lui-meme via cet endpoint, pour eviter un auto-verrouillage ou une
+    // manipulation d'un autre MANAGER).
+    @PreAuthorize("hasRole('MANAGER')")
+    @PatchMapping("/{id}/role")
+    public ResponseEntity<UserResponse> updateRole(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateRoleRequest request) {
+        if (request.getRole() == GlobalRole.MANAGER) {
+            throw new RuntimeException(
+                "Cet endpoint ne permet pas d'attribuer le rôle MANAGER.");
+        }
+        User user = userRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé : " + id));
+        if (user.getGlobalRole() == GlobalRole.MANAGER) {
+            throw new RuntimeException(
+                "Le rôle d'un MANAGER ne peut pas être modifié depuis cet écran.");
+        }
+        user.setGlobalRole(request.getRole());
+        userRepository.save(user);
         return ResponseEntity.ok(toResponse(user));
     }
 

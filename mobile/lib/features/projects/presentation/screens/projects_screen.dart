@@ -161,7 +161,10 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
       )).toList(),
     );
 
-    final canCreate = _userRole == 'MANAGER' || _userRole == 'CHEF_PROJET';
+    // Seul MANAGER cree des projets desormais : il designe toujours qui en
+    // est le chef de projet (owner) a la creation. CHEF_PROJET garde la
+    // gestion de son propre projet (membres/taches) mais n'en cree plus.
+    final canCreate = _userRole == 'MANAGER';
     final addButton = ElevatedButton.icon(
       onPressed: _showCreateDialog,
       icon: const Icon(Icons.add, size: 14),
@@ -688,45 +691,72 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     );
   }
 
-  void _showCreateDialog() {
+  Future<void> _showCreateDialog() async {
     final nameCtrl = TextEditingController();
     final keyCtrl = TextEditingController();
     final descCtrl = TextEditingController();
     final budgetCtrl = TextEditingController(
       text: '50000');
 
+    // Le Manager doit toujours designer qui dirige le projet ; MEMBRE inclus
+    // (sera promu CHEF_PROJET automatiquement cote backend s'il est choisi).
+    List<MemberModel> users = [];
+    try {
+      users = await ApiService.getAllUsers();
+    } catch (_) {}
+    if (!mounted) return;
+    int? selectedOwnerId = users.isNotEmpty ? users.first.id : null;
+
     showDialog(
       context: context,
-      builder: (_) => _ProjectDialog(
-        title: 'Nouveau projet',
-        nameCtrl: nameCtrl,
-        keyCtrl: keyCtrl,
-        descCtrl: descCtrl,
-        budgetCtrl: budgetCtrl,
-        onSave: () async {
-          if (nameCtrl.text.isEmpty ||
-              keyCtrl.text.isEmpty) {
-            return;
-          }
-          await ApiService.createProject(
-            nameCtrl.text,
-            keyCtrl.text.toUpperCase(),
-            descCtrl.text,
-            double.tryParse(budgetCtrl.text) ?? 50000);
-          Navigator.pop(context);
-          _load();
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: const Text(
-                  'Projet créé avec succès !'),
-                backgroundColor: context.colors.green,
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8)),
-              ));
-          }
-        },
+      builder: (_) => StatefulBuilder(
+        builder: (context, setDialogState) => _ProjectDialog(
+          title: 'Nouveau projet',
+          nameCtrl: nameCtrl,
+          keyCtrl: keyCtrl,
+          descCtrl: descCtrl,
+          budgetCtrl: budgetCtrl,
+          ownerOptions: users,
+          selectedOwnerId: selectedOwnerId,
+          onOwnerChanged: (id) => setDialogState(() => selectedOwnerId = id),
+          onSave: () async {
+            if (nameCtrl.text.isEmpty ||
+                keyCtrl.text.isEmpty ||
+                selectedOwnerId == null) {
+              return;
+            }
+            try {
+              await ApiService.createProject(
+                nameCtrl.text,
+                keyCtrl.text.toUpperCase(),
+                descCtrl.text,
+                double.tryParse(budgetCtrl.text) ?? 50000,
+                selectedOwnerId!);
+              if (mounted) Navigator.pop(context);
+              _load();
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: const Text(
+                      'Projet créé avec succès !'),
+                    backgroundColor: context.colors.green,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                  ));
+              }
+            } catch (e) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(apiErrorMessage(e, fallback: 'Impossible de créer le projet')),
+                    backgroundColor: context.colors.red,
+                    behavior: SnackBarBehavior.floating,
+                  ));
+              }
+            }
+          },
+        ),
       ),
     );
   }
@@ -875,6 +905,10 @@ class _ProjectDialog extends StatelessWidget {
   final TextEditingController budgetCtrl;
   final VoidCallback onSave;
   final bool isEdit;
+  // Non-null uniquement à la création (Manager) : choix du chef de projet.
+  final List<MemberModel>? ownerOptions;
+  final int? selectedOwnerId;
+  final ValueChanged<int?>? onOwnerChanged;
 
   const _ProjectDialog({
     required this.title,
@@ -884,6 +918,9 @@ class _ProjectDialog extends StatelessWidget {
     required this.budgetCtrl,
     required this.onSave,
     this.isEdit = false,
+    this.ownerOptions,
+    this.selectedOwnerId,
+    this.onOwnerChanged,
   });
 
   @override
@@ -909,6 +946,10 @@ class _ProjectDialog extends StatelessWidget {
             const SizedBox(height: 10),
             _f(context, 'Budget (€)', budgetCtrl,
               type: TextInputType.number),
+            if (ownerOptions != null) ...[
+              const SizedBox(height: 10),
+              _ownerPicker(context),
+            ],
           ],
         ),
       ),
@@ -958,6 +999,50 @@ class _ProjectDialog extends StatelessWidget {
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 10, vertical: 9)),
         ),
+      ],
+    );
+  }
+
+  Widget _ownerPicker(BuildContext context) {
+    final options = ownerOptions!;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Chef de projet', style: TextStyle(
+          fontSize: 11, color: context.colors.text2)),
+        const SizedBox(height: 4),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            color: context.colors.bg3,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: context.colors.border)),
+          child: DropdownButton<int>(
+            value: selectedOwnerId,
+            isExpanded: true,
+            underline: const SizedBox(),
+            dropdownColor: context.colors.bg3,
+            hint: Text(
+              options.isEmpty ? 'Aucun utilisateur disponible' : 'Choisir un utilisateur',
+              style: TextStyle(fontSize: 12, color: context.colors.text2)),
+            style: TextStyle(fontSize: 12, color: context.colors.text1),
+            items: options
+                .map((u) => DropdownMenuItem(
+                    value: u.id,
+                    child: Text('${u.fullName} (${u.globalRole})',
+                      overflow: TextOverflow.ellipsis)))
+                .toList(),
+            onChanged: options.isEmpty ? null : onOwnerChanged,
+          ),
+        ),
+        if (selectedOwnerId != null &&
+            options.firstWhere((u) => u.id == selectedOwnerId).globalRole == 'MEMBRE')
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              'Cet utilisateur sera automatiquement promu Chef de projet.',
+              style: TextStyle(fontSize: 10, color: context.colors.amber)),
+          ),
       ],
     );
   }

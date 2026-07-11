@@ -23,14 +23,13 @@ public class ProjectController {
 
     private final ProjectService projectService;
 
-    // POST /api/projects — إنشاء مشروع: MANAGER أو CHEF_PROJET فقط
-    @PreAuthorize("hasAnyRole('MANAGER','CHEF_PROJET')")
+    // POST /api/projects — MANAGER فقط ديما : كيختار شكون يكون CHEF_PROJET (owner)
+    // ديال هاد المشروع (request.ownerId), CHEF_PROJET ما بقاش يقدر ينشئ مشاريع.
+    @PreAuthorize("hasRole('MANAGER')")
     @PostMapping
     public ResponseEntity<ProjectResponse> createProject(
-            @Valid @RequestBody CreateProjectRequest request,
-            @AuthenticationPrincipal UserDetails userDetails) {
-        return ResponseEntity.ok(
-            projectService.createProject(request, userDetails.getUsername()));
+            @Valid @RequestBody CreateProjectRequest request) {
+        return ResponseEntity.ok(projectService.createProject(request));
     }
 
     // GET /api/projects — دابا مفلترة حسب الدور (MANAGER كلشي، الباقي غير مشاريعهم)

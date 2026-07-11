@@ -32,10 +32,22 @@ public class ProjectService {
     private final ProjectMemberRepository memberRepository;
     private final NotificationService notificationService;
 
-    public ProjectResponse createProject(CreateProjectRequest request,
-                                         String ownerEmail) {
-        User owner = userRepository.findByEmail(ownerEmail)
-            .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+    // Seul un MANAGER cree des projets (verifie au niveau du Controller) : il
+    // designe toujours qui en est le chef de projet (owner), via request.ownerId —
+    // ce n'est plus forcement lui-meme.
+    public ProjectResponse createProject(CreateProjectRequest request) {
+        User owner = userRepository.findById(request.getOwnerId())
+            .orElseThrow(() -> new RuntimeException(
+                "Utilisateur assigné comme chef de projet introuvable"));
+
+        // Diriger un projet requiert le role CHEF_PROJET pour que le modele de
+        // permission reste coherent (checkOwnershipOrManager) ; assigner
+        // quelqu'un comme lead d'un projet le promeut donc automatiquement s'il
+        // n'etait qu'un simple MEMBRE.
+        if (owner.getGlobalRole() == GlobalRole.MEMBRE) {
+            owner.setGlobalRole(GlobalRole.CHEF_PROJET);
+            userRepository.save(owner);
+        }
 
         if (projectRepository.existsByKey(request.getKey())) {
             throw new RuntimeException(

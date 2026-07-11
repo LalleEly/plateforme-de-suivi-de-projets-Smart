@@ -87,13 +87,15 @@ class ApiService {
   }
 
   static Future<ProjectModel> createProject(
-      String name, String key, String description, double budget) async {
+      String name, String key, String description, double budget,
+      int ownerId) async {
     final res = await _dio.post('/projects', data: {
       'name': name,
       'key': key,
       'description': description,
       'budget': budget,
       'hourlyRate': 45,
+      'ownerId': ownerId,
     });
     return ProjectModel.fromJson(res.data);
   }
@@ -236,6 +238,11 @@ class ApiService {
   static Future<List<MemberModel>> getAllUsers() async {
     final res = await _dio.get('/users');
     return (res.data as List).map((e) => MemberModel.fromJson(e)).toList();
+  }
+
+  static Future<MemberModel> updateUserRole(int userId, String role) async {
+    final res = await _dio.patch('/users/$userId/role', data: {'role': role});
+    return MemberModel.fromJson(res.data);
   }
 
   static Future<List<NotificationModel>> getNotifications() async {
