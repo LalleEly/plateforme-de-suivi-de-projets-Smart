@@ -59,11 +59,15 @@ public class ProjectService {
         // Sans ceci, un owner solo qui travaille seul sur son projet n'a aucune
         // ligne project_members : les KPI "Performance Membres" le montrent
         // comme vide alors qu'il a du vrai travail assigne.
-        memberRepository.save(ProjectMember.builder()
+        ProjectMember ownerMember = memberRepository.save(ProjectMember.builder()
             .project(saved)
             .user(owner)
             .role(ProjectRole.PROJECT_MANAGER)
             .build());
+        // memberRepository.save() ne met pas a jour saved.getMembers() en memoire :
+        // sans cet ajout manuel, la reponse de creation affichait memberCount=0
+        // (corrige tout seul au prochain fetch, mais trompeur sur l'instant).
+        saved.getMembers().add(ownerMember);
 
         return toResponse(saved);
     }
@@ -200,17 +204,20 @@ public class ProjectService {
         memberRepository.delete(member);
     }
 
-    // فحص الصلاحية: MANAGER دايما مسموح، CHEF_PROJET إذا هو owner أو membre ديال المشروع
+    // فحص الصلاحية: MANAGER دايما مسموح، CHEF_PROJET فقط إذا هو owner (lead) ديال
+    // المشروع — pas seulement membre. Un CHEF_PROJET simplement ajouté comme membre
+    // d'un projet qu'il ne dirige pas ne doit pas pouvoir gerer ses membres/le
+    // modifier/l'archiver/le supprimer (avant : "owner OU membre" laissait n'importe
+    // quel CHEF_PROJET membre d'un projet gerer l'equipe d'un autre chef).
     private void checkOwnershipOrManager(Project project, String username) {
         User current = userRepository.findByEmail(username)
             .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
 
         boolean isManager = current.getGlobalRole() == GlobalRole.MANAGER;
-        boolean isOwnerOrMember = current.getGlobalRole() == GlobalRole.CHEF_PROJET
-            && (project.getOwner().getId().equals(current.getId())
-                || memberRepository.existsByUser_IdAndProject_Id(current.getId(), project.getId()));
+        boolean isOwner = current.getGlobalRole() == GlobalRole.CHEF_PROJET
+            && project.getOwner().getId().equals(current.getId());
 
-        if (!isManager && !isOwnerOrMember) {
+        if (!isManager && !isOwner) {
             throw new AccessDeniedException(
                 "Vous n'êtes pas autorisé à modifier ce projet.");
         }

@@ -387,11 +387,15 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     );
   }
 
-  // Le backend confirme le controle exact (owner/membre pour CHEF_PROJET) ;
-  // ici, si le projet apparait dans la liste d'un CHEF_PROJET, c'est deja qu'il
-  // est owner ou membre (getAllProjects le filtre deja ainsi cote backend).
+  // Un CHEF_PROJET ne peut gerer (modifier/archiver/supprimer/membres) que les
+  // projets qu'il dirige (owner), pas ceux ou il est simplement membre — meme
+  // regle que _showSprints. Le backend revalide de toute facon (defense en
+  // profondeur), mais sans ce filtre cote client le menu s'affichait aussi sur
+  // les projets des autres chefs et echouait au clic avec un 403.
   Widget _popupMenu(ProjectModel project) {
-    if (_userRole != 'MANAGER' && _userRole != 'CHEF_PROJET') {
+    final canManage = _userRole == 'MANAGER' ||
+        (_userRole == 'CHEF_PROJET' && project.ownerId == _userId);
+    if (!canManage) {
       return const SizedBox();
     }
     return PopupMenuButton<String>(
