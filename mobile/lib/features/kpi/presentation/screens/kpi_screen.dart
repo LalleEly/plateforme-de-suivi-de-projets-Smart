@@ -400,7 +400,12 @@ class _KpiScreenState extends State<KpiScreen> {
                 style: TextStyle(fontSize: 11, color: context.colors.text3)),
           ),
         ...projects.map((p) {
-          final color = p.profitability >= 0 ? context.colors.green : context.colors.red;
+          final color = p.profitability == null
+              ? context.colors.text2
+              : (p.profitability! >= 0 ? context.colors.green : context.colors.red);
+          final profitText = p.profitability == null
+              ? 'N/A - Données insuffisantes'
+              : '${p.profitability!.toStringAsFixed(0)}%';
           return Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
@@ -418,7 +423,7 @@ class _KpiScreenState extends State<KpiScreen> {
                       style: TextStyle(
                           fontSize: 12, color: context.colors.text2))),
               Expanded(
-                  child: Text('${p.profitability.toStringAsFixed(0)}%',
+                  child: Text(profitText,
                       style: TextStyle(
                           fontSize: 12, fontWeight: FontWeight.w700, color: color))),
               Expanded(

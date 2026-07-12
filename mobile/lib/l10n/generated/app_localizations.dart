@@ -704,6 +704,12 @@ abstract class AppLocalizations {
   /// **'Budget (€)'**
   String get fieldBudget;
 
+  /// No description provided for @fieldHourlyRate.
+  ///
+  /// In fr, this message translates to:
+  /// **'Taux horaire (€/h)'**
+  String get fieldHourlyRate;
+
   /// No description provided for @createProjectButton.
   ///
   /// In fr, this message translates to:

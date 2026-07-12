@@ -118,6 +118,7 @@
   "fieldProjectKey": "Clé (ex: PROJ1)",
   "fieldDescription": "Description",
   "fieldBudget": "Budget (€)",
+  "fieldHourlyRate": "Taux horaire (€/h)",
   "createProjectButton": "Créer le projet",
   "projectCreatedSuccess": "Projet créé avec succès !",
   "errorGeneric": "Erreur : {error}",

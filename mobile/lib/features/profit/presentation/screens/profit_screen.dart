@@ -54,12 +54,11 @@ class _ProfitScreenState extends State<ProfitScreen> {
         .toList();
   }
 
-  double get _totalProfitability {
-    if (_kpi == null || _kpi!.projectKpis.isEmpty) return 0;
-    return _kpi!.projectKpis
-        .map((p) => p.profitability)
-        .fold(0.0, (a, b) => a + b) / _kpi!.projectKpis.length;
-  }
+  // Rentabilite globale = agregat budget/cout reel de tous les projets,
+  // calculee cote backend (KpiService) -- pas une moyenne locale des
+  // pourcentages, qui donnerait le meme poids a un petit et un gros projet.
+  // null si aucun budget defini ou aucune heure enregistree nulle part.
+  double? get _totalProfitability => _kpi?.globalProfitability;
 
   @override
   Widget build(BuildContext context) {
@@ -170,7 +169,8 @@ class _ProfitScreenState extends State<ProfitScreen> {
           : 'Rapport de rentabilité - Tous les projets'],
       ['Généré le', DateTime.now().toString()],
       [],
-      ['Projet', 'Complétion (%)', 'Heures', 'Coût main d\'œuvre', 'Budget', 'Rentabilité (%)', 'Dans les délais'],
+      ['Projet', 'Complétion (%)', 'Heures', 'Coût main d\'œuvre', 'Budget',
+        'Écart budgétaire', 'Rentabilité (%)', 'Dans les délais'],
     ];
     for (final p in _visibleProjectKpis) {
       rows.add([
@@ -179,7 +179,8 @@ class _ProfitScreenState extends State<ProfitScreen> {
         p.loggedHours,
         p.laborCost?.toStringAsFixed(2) ?? 'N/A',
         p.budget?.toStringAsFixed(2) ?? 'N/A',
-        p.profitability.toStringAsFixed(1),
+        p.budgetVariance?.toStringAsFixed(2) ?? 'N/A',
+        p.profitability?.toStringAsFixed(1) ?? 'N/A - Données insuffisantes',
         p.onSchedule ? 'Oui' : 'Non',
       ]);
     }
@@ -282,7 +283,23 @@ class _ProfitScreenState extends State<ProfitScreen> {
 
   Widget _buildStats() {
     final kpi = _kpi!;
-    final profitSign = _totalProfitability >= 0 ? '+' : '';
+    final profitability = _totalProfitability;
+    final profitSign = (profitability ?? 0) >= 0 ? '+' : '';
+    final profitValue = profitability == null
+        ? 'N/A - Données insuffisantes'
+        : '$profitSign${profitability.toStringAsFixed(1)}%';
+    final profitColor = profitability == null
+        ? context.colors.text2
+        : (profitability >= 0 ? context.colors.green : context.colors.red);
+
+    final variance = kpi.totalBudgetVariance;
+    final varianceSign = (variance ?? 0) >= 0 ? '+' : '';
+    final varianceValue = variance == null
+        ? 'N/A'
+        : '$varianceSign${variance.toStringAsFixed(0)}€';
+    final varianceColor = variance == null
+        ? context.colors.text2
+        : (variance >= 0 ? context.colors.green : context.colors.red);
 
     return ResponsiveKpiGrid(spacing: 10, children: [
       _statCard(Icons.folder_outlined, '${kpi.totalProjects}',
@@ -292,9 +309,13 @@ class _ProfitScreenState extends State<ProfitScreen> {
       _statCard(Icons.access_time_rounded, '${kpi.totalLoggedHours}h',
           'Heures enregistrées', context.colors.purple),
       _statCard(
+          Icons.account_balance_wallet_outlined,
+          varianceValue,
+          'Écart budgétaire', varianceColor),
+      _statCard(
           Icons.trending_up_rounded,
-          '$profitSign${_totalProfitability.toStringAsFixed(1)}%',
-          'Rentabilité moy.', _totalProfitability >= 0 ? context.colors.green : context.colors.red),
+          profitValue,
+          'Rentabilité globale', profitColor),
     ]);
   }
 
@@ -375,8 +396,13 @@ class _ProfitScreenState extends State<ProfitScreen> {
           ...projects.map(_buildProjectCard)
         else
           ...projects.map((p) {
-          final profitColor = p.profitability >= 0 ? context.colors.green : context.colors.red;
-          final profitSign = p.profitability >= 0 ? '+' : '';
+          final profitColor = p.profitability == null
+              ? context.colors.text2
+              : (p.profitability! >= 0 ? context.colors.green : context.colors.red);
+          final profitSign = (p.profitability ?? 0) >= 0 ? '+' : '';
+          final profitText = p.profitability == null
+              ? 'N/A - Données insuffisantes'
+              : '$profitSign${p.profitability!.toStringAsFixed(1)}%';
 
           return Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -409,7 +435,7 @@ class _ProfitScreenState extends State<ProfitScreen> {
                   style: TextStyle(fontSize: 11, color: context.colors.text2))),
               // Rentabilité
               Expanded(child: Text(
-                '$profitSign${p.profitability.toStringAsFixed(1)}%',
+                profitText,
                 style: TextStyle(fontSize: 11,
                     fontWeight: FontWeight.w700, color: profitColor),
               )),
@@ -436,8 +462,13 @@ class _ProfitScreenState extends State<ProfitScreen> {
   /// desktop (nom, complétion, heures, rentabilité, statut) mais empilées
   /// verticalement pour éviter la colonne "STATUT" trop étroite.
   Widget _buildProjectCard(ProjectKpiModel p) {
-    final profitColor = p.profitability >= 0 ? context.colors.green : context.colors.red;
-    final profitSign = p.profitability >= 0 ? '+' : '';
+    final profitColor = p.profitability == null
+        ? context.colors.text2
+        : (p.profitability! >= 0 ? context.colors.green : context.colors.red);
+    final profitSign = (p.profitability ?? 0) >= 0 ? '+' : '';
+    final profitText = p.profitability == null
+        ? 'N/A - Données insuffisantes'
+        : '$profitSign${p.profitability!.toStringAsFixed(1)}%';
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -465,7 +496,7 @@ class _ProfitScreenState extends State<ProfitScreen> {
         Row(children: [
           Expanded(flex: 2, child: _profitStat('Heures', '${p.loggedHours}h', context.colors.text1)),
           Expanded(child: _profitStat('Rentabilité',
-              '$profitSign${p.profitability.toStringAsFixed(1)}%', profitColor)),
+              profitText, profitColor)),
         ]),
         const SizedBox(height: 10),
         Row(children: [

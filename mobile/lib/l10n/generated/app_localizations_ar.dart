@@ -326,6 +326,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get fieldBudget => 'الميزانية (€)';
 
   @override
+  String get fieldHourlyRate => 'السعر بالساعة (€/س)';
+
+  @override
   String get createProjectButton => 'إنشاء المشروع';
 
   @override

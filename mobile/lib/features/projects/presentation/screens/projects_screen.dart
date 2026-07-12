@@ -697,6 +697,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     final descCtrl = TextEditingController();
     final budgetCtrl = TextEditingController(
       text: '50000');
+    final hourlyRateCtrl = TextEditingController();
 
     // Le Manager doit toujours designer qui dirige le projet ; MEMBRE inclus
     // (sera promu CHEF_PROJET automatiquement cote backend s'il est choisi).
@@ -716,6 +717,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
           keyCtrl: keyCtrl,
           descCtrl: descCtrl,
           budgetCtrl: budgetCtrl,
+          hourlyRateCtrl: hourlyRateCtrl,
           ownerOptions: users,
           selectedOwnerId: selectedOwnerId,
           onOwnerChanged: (id) => setDialogState(() => selectedOwnerId = id),
@@ -731,7 +733,8 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                 keyCtrl.text.toUpperCase(),
                 descCtrl.text,
                 double.tryParse(budgetCtrl.text) ?? 50000,
-                selectedOwnerId!);
+                selectedOwnerId!,
+                hourlyRate: double.tryParse(hourlyRateCtrl.text));
               if (mounted) Navigator.pop(context);
               _load();
               if (mounted) {
@@ -770,6 +773,8 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
       text: project.description ?? '');
     final budgetCtrl = TextEditingController(
       text: project.budget?.toStringAsFixed(0) ?? '');
+    final hourlyRateCtrl = TextEditingController(
+      text: project.hourlyRate?.toStringAsFixed(2) ?? '');
 
     showDialog(
       context: context,
@@ -779,6 +784,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
         keyCtrl: keyCtrl,
         descCtrl: descCtrl,
         budgetCtrl: budgetCtrl,
+        hourlyRateCtrl: hourlyRateCtrl,
         isEdit: true,
         onSave: () async {
           if (nameCtrl.text.isEmpty || keyCtrl.text.isEmpty) return;
@@ -789,6 +795,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
               keyCtrl.text.toUpperCase(),
               descCtrl.text,
               double.tryParse(budgetCtrl.text) ?? 0,
+              hourlyRate: double.tryParse(hourlyRateCtrl.text),
             );
             if (mounted) Navigator.pop(context);
             _load();
@@ -903,6 +910,7 @@ class _ProjectDialog extends StatelessWidget {
   final TextEditingController keyCtrl;
   final TextEditingController descCtrl;
   final TextEditingController budgetCtrl;
+  final TextEditingController hourlyRateCtrl;
   final VoidCallback onSave;
   final bool isEdit;
   // Non-null uniquement à la création (Manager) : choix du chef de projet.
@@ -916,6 +924,7 @@ class _ProjectDialog extends StatelessWidget {
     required this.keyCtrl,
     required this.descCtrl,
     required this.budgetCtrl,
+    required this.hourlyRateCtrl,
     required this.onSave,
     this.isEdit = false,
     this.ownerOptions,
@@ -945,6 +954,9 @@ class _ProjectDialog extends StatelessWidget {
             _f(context, 'Description', descCtrl),
             const SizedBox(height: 10),
             _f(context, 'Budget (€)', budgetCtrl,
+              type: TextInputType.number),
+            const SizedBox(height: 10),
+            _f(context, 'Taux horaire (€/h)', hourlyRateCtrl,
               type: TextInputType.number),
             if (ownerOptions != null) ...[
               const SizedBox(height: 10),

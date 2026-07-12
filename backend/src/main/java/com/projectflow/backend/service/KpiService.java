@@ -25,6 +25,13 @@ public class KpiService {
     private final UserRepository userRepository;
     private final ProjectMemberRepository memberRepository;
 
+    // Seuil minimal de donnees reelles avant de calculer une rentabilite
+    // financiere : sous ce seuil, le cout reel engage est trop faible face
+    // au budget pour que le ratio (budget-cout)/budget veuille dire quoi que
+    // ce soit (cf. cas 6 minutes loggees sur 50 000 EUR -> ~100% "correct"
+    // mathematiquement mais non representatif).
+    private static final BigDecimal MIN_BUDGET_ENGAGED_RATIO = BigDecimal.valueOf(0.05);
+
     // MANAGER يشوف KPI ديال كل المشاريع (vue globale)
     // CHEF_PROJET يشوف غير KPI ديال المشاريع لي هو owner فيها أو member فيها
     public KpiDashboardResponse getDashboard(String username) {
@@ -57,14 +64,53 @@ public class KpiService {
             Math.round((double) completed / tasks.size() * 10000.0) / 100.0;
         List<ProjectKpiResponse> projectKpis = projects.stream()
             .map(this::calculateProjectKpi).collect(Collectors.toList());
+
+        // KPI globaux derives des sommes reelles budget/cout de chaque projet
+        // (pas une moyenne des pourcentages projet par projet, qui donnerait
+        // le meme poids a un projet de 1000 et un projet de 1000000).
+        BigDecimal totalBudget = projectKpis.stream()
+            .map(ProjectKpiResponse::getBudget)
+            .filter(java.util.Objects::nonNull)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalLaborCost = projectKpis.stream()
+            .map(ProjectKpiResponse::getLaborCost)
+            .filter(java.util.Objects::nonNull)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        boolean hasBudget = totalBudget.compareTo(BigDecimal.ZERO) > 0;
+        boolean hasEnoughData = hasEnoughDataForProfitability(totalBudget, totalLaborCost, completed);
+        BigDecimal totalBudgetVariance = hasBudget ?
+            totalBudget.subtract(totalLaborCost) : null;
+        Double globalProfitability = hasEnoughData
+            ? totalBudget.subtract(totalLaborCost)
+                .divide(totalBudget, 4, RoundingMode.HALF_UP)
+                .multiply(BigDecimal.valueOf(100))
+                .setScale(2, RoundingMode.HALF_UP).doubleValue()
+            : null;
+
         return KpiDashboardResponse.builder()
             .totalProjects(projects.size())
             .totalTasks(tasks.size())
             .completedTasks((int) completed)
             .completionRate(rate)
             .totalLoggedHours(totalMinutes / 60)
+            .totalBudget(totalBudget)
+            .totalLaborCost(totalLaborCost)
+            .totalBudgetVariance(totalBudgetVariance)
+            .globalProfitability(globalProfitability)
             .projectKpis(projectKpis)
             .build();
+    }
+
+    // Rentabilite fiable seulement si le budget est defini ET qu'on a assez
+    // de donnees reelles pour juger : soit au moins 5% du budget deja engage
+    // en cout de main d'oeuvre, soit au moins une tache terminee (signal
+    // qu'une partie du perimetre est livree, meme si peu d'heures loggees).
+    private boolean hasEnoughDataForProfitability(
+            BigDecimal budget, BigDecimal laborCost, long completedTasks) {
+        if (budget == null || budget.compareTo(BigDecimal.ZERO) <= 0) return false;
+        boolean budgetMeaningfullyEngaged = laborCost
+            .compareTo(budget.multiply(MIN_BUDGET_ENGAGED_RATIO)) >= 0;
+        return budgetMeaningfullyEngaged || completedTasks >= 1;
     }
 
     // MANAGER : n'importe quel projet. CHEF_PROJET : uniquement ses projets
@@ -104,14 +150,19 @@ public class KpiService {
             project.getHourlyRate() : BigDecimal.ZERO;
         BigDecimal laborCost = BigDecimal.valueOf(hours)
             .multiply(rate2).setScale(2, RoundingMode.HALF_UP);
-        double profitability = 0;
-        if (project.getBudget() != null &&
-            project.getBudget().compareTo(BigDecimal.ZERO) > 0) {
-            BigDecimal margin = project.getBudget().subtract(laborCost);
-            profitability = margin.divide(project.getBudget(), 4, RoundingMode.HALF_UP)
+
+        BigDecimal budget = project.getBudget();
+        boolean hasBudget = budget != null && budget.compareTo(BigDecimal.ZERO) > 0;
+        boolean hasEnoughData = hasEnoughDataForProfitability(budget, laborCost, completed);
+
+        BigDecimal budgetVariance = hasBudget ? budget.subtract(laborCost) : null;
+        Double profitability = hasEnoughData
+            ? budget.subtract(laborCost)
+                .divide(budget, 4, RoundingMode.HALF_UP)
                 .multiply(BigDecimal.valueOf(100))
-                .setScale(2, RoundingMode.HALF_UP).doubleValue();
-        }
+                .setScale(2, RoundingMode.HALF_UP).doubleValue()
+            : null;
+
         return ProjectKpiResponse.builder()
             .projectId(project.getId())
             .projectName(project.getName())
@@ -120,7 +171,8 @@ public class KpiService {
             .completionRate(rate)
             .loggedHours((int) hours)
             .laborCost(laborCost)
-            .budget(project.getBudget())
+            .budget(budget)
+            .budgetVariance(budgetVariance)
             .profitability(profitability)
             .onSchedule(project.isOnSchedule())
             .build();

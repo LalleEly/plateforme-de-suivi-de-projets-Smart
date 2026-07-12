@@ -639,6 +639,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final keyCtrl = TextEditingController();
     final descCtrl = TextEditingController();
     final budgetCtrl = TextEditingController(text: '50000');
+    final hourlyRateCtrl = TextEditingController();
 
     // Le Manager designe toujours qui dirige le projet (MEMBRE inclus : sera
     // promu CHEF_PROJET automatiquement cote backend si choisi).
@@ -674,6 +675,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               _dialogField(l10n.fieldBudget, budgetCtrl,
                   type: TextInputType.number),
               const SizedBox(height: 10),
+              _dialogField(l10n.fieldHourlyRate, hourlyRateCtrl,
+                  type: TextInputType.number),
+              const SizedBox(height: 10),
               _ownerPicker(users, selectedOwnerId,
                   (id) => setDialogState(() => selectedOwnerId = id)),
             ],
@@ -697,7 +701,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       keyCtrl.text.toUpperCase(),
                       descCtrl.text,
                       double.tryParse(budgetCtrl.text) ?? 50000,
-                      selectedOwnerId!);
+                      selectedOwnerId!,
+                      hourlyRate: double.tryParse(hourlyRateCtrl.text));
                   if (mounted) Navigator.pop(context);
                   await widget.onRefresh();
                   if (mounted) {

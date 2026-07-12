@@ -15,6 +15,9 @@ public class ProjectKpiResponse {
     private int loggedHours;
     private BigDecimal laborCost;
     private BigDecimal budget;
-    private double profitability;
+    // null = pas assez de donnees pour un calcul fiable (pas de budget defini,
+    // ou aucune heure enregistree) -- ne jamais deduire 100% par defaut.
+    private Double profitability;
+    private BigDecimal budgetVariance;
     private boolean onSchedule;
 }

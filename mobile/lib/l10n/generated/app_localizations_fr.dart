@@ -329,6 +329,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get fieldBudget => 'Budget (€)';
 
   @override
+  String get fieldHourlyRate => 'Taux horaire (€/h)';
+
+  @override
   String get createProjectButton => 'Créer le projet';
 
   @override

@@ -88,13 +88,13 @@ class ApiService {
 
   static Future<ProjectModel> createProject(
       String name, String key, String description, double budget,
-      int ownerId) async {
+      int ownerId, {double? hourlyRate}) async {
     final res = await _dio.post('/projects', data: {
       'name': name,
       'key': key,
       'description': description,
       'budget': budget,
-      'hourlyRate': 45,
+      'hourlyRate': hourlyRate,
       'ownerId': ownerId,
     });
     return ProjectModel.fromJson(res.data);
@@ -112,7 +112,7 @@ class ApiService {
       'key': key,
       'description': description,
       'budget': budget,
-      'hourlyRate': hourlyRate ?? 45,
+      'hourlyRate': hourlyRate,
     });
     return ProjectModel.fromJson(res.data);
   }

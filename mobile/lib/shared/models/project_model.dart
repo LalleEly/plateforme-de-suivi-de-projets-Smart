@@ -7,6 +7,7 @@ class ProjectModel {
   final String ownerName;
   final int? ownerId;
   final double? budget;
+  final double? hourlyRate;
   final int memberCount;
   final int taskCount;
   final int completedTaskCount;
@@ -22,6 +23,7 @@ class ProjectModel {
     required this.ownerName,
     this.ownerId,
     this.budget,
+    this.hourlyRate,
     required this.memberCount,
     required this.taskCount,
     this.completedTaskCount = 0,
@@ -39,6 +41,7 @@ class ProjectModel {
       ownerName: json['ownerName'] ?? '',
       ownerId: json['ownerId'],
       budget: json['budget']?.toDouble(),
+      hourlyRate: json['hourlyRate']?.toDouble(),
       memberCount: json['memberCount'] ?? 0,
       taskCount: json['taskCount'] ?? 0,
       completedTaskCount: json['completedTaskCount'] ?? 0,

@@ -221,7 +221,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
         p.projectName,
         p.completionRate.toStringAsFixed(1),
         p.loggedHours,
-        p.profitability.toStringAsFixed(1),
+        p.profitability?.toStringAsFixed(1) ?? 'N/A - Données insuffisantes',
         p.onSchedule ? 'Oui' : 'Non',
       ]);
     }
@@ -269,7 +269,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
             completedTasks: 0,
             completionRate: 0,
             loggedHours: 0,
-            profitability: 0,
+            profitability: null,
             onSchedule: true),
       );
       rows.add([
@@ -279,7 +279,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
         proj.taskCount,
         k.completionRate.toStringAsFixed(1),
         k.loggedHours,
-        k.profitability.toStringAsFixed(1),
+        k.profitability?.toStringAsFixed(1) ?? 'N/A - Données insuffisantes',
         k.onSchedule ? 'Oui' : 'Non',
       ]);
     }

@@ -106,6 +106,7 @@
   "fieldProjectKey": "الرمز (مثال: PROJ1)",
   "fieldDescription": "الوصف",
   "fieldBudget": "الميزانية (€)",
+  "fieldHourlyRate": "السعر بالساعة (€/س)",
   "createProjectButton": "إنشاء المشروع",
   "projectCreatedSuccess": "تم إنشاء المشروع بنجاح!",
   "errorGeneric": "خطأ: {error}",
