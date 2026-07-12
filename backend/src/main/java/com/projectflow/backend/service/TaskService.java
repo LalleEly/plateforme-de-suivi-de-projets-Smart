@@ -21,7 +21,6 @@ public class TaskService {
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
     private final SprintRepository sprintRepository;
-    private final ProjectMemberRepository projectMemberRepository;
     private final NotificationService notificationService;
     private final TimeLogRepository timeLogRepository;
     private final CommentRepository commentRepository;
@@ -154,13 +153,16 @@ public class TaskService {
         taskRepository.save(task);
     }
 
+    // MANAGER : n'importe quel projet. CHEF_PROJET : uniquement les projets
+    // qu'il dirige (owner), pas ceux ou il est simplement membre — meme regle
+    // que ProjectService.checkOwnershipOrManager (sinon un CHEF_PROJET membre
+    // d'un projet qu'il ne dirige pas pouvait creer/modifier/supprimer des
+    // taches dessus).
     private boolean hasManageRights(Project project, User current) {
         boolean isManager = current.getGlobalRole() == GlobalRole.MANAGER;
-        boolean isChefOfProject = current.getGlobalRole() == GlobalRole.CHEF_PROJET
-            && (project.getOwner().getId().equals(current.getId())
-                || projectMemberRepository.existsByUser_IdAndProject_Id(
-                    current.getId(), project.getId()));
-        return isManager || isChefOfProject;
+        boolean isOwner = current.getGlobalRole() == GlobalRole.CHEF_PROJET
+            && project.getOwner().getId().equals(current.getId());
+        return isManager || isOwner;
     }
 
     private void checkManageRights(Project project, User current) {

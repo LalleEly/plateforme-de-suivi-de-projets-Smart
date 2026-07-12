@@ -9,6 +9,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/responsive.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../../../shared/models/comment_model.dart';
+import '../../../../shared/models/member_model.dart';
 import '../../../../shared/models/project_model.dart';
 import '../../../../shared/models/task_model.dart';
 
@@ -59,6 +60,17 @@ class _TasksScreenState extends State<TasksScreen> {
           } catch (_) {
             continue;
           }
+        }
+        if (_userRole == 'CHEF_PROJET') {
+          // En plus des projets qu'il dirige/dont il est membre, un CHEF_PROJET
+          // peut recevoir une tâche assignée par le MANAGER dans un projet où
+          // il n'est ni owner ni membre formel — sans ça elle n'apparaît jamais.
+          try {
+            final myTasks = await ApiService.getMyTasks();
+            for (final t in myTasks) {
+              merged[t.id] = t;
+            }
+          } catch (_) {}
         }
         tasks = merged.values.toList();
       } else {
@@ -807,6 +819,21 @@ class _TasksScreenState extends State<TasksScreen> {
     final descCtrl = TextEditingController();
     String? selectedProjectId;
     String priority = 'MEDIUM';
+    List<MemberModel> assigneeOptions = [];
+    int? selectedAssigneeId;
+
+    Future<void> loadAssigneeOptions(
+        String projectId, void Function(void Function()) setS) async {
+      List<MemberModel> members = [];
+      try {
+        members = await ApiService.getProjectMembers(int.parse(projectId));
+      } catch (_) {}
+      setS(() {
+        assigneeOptions = members;
+        selectedAssigneeId = null;
+      });
+    }
+
     showDialog(
       context: context,
       builder: (_) => StatefulBuilder(
@@ -857,11 +884,55 @@ class _TasksScreenState extends State<TasksScreen> {
                                       overflow: TextOverflow.ellipsis),
                                 ))
                             .toList(),
-                        onChanged: (v) => setS(() => selectedProjectId = v),
+                        onChanged: (v) {
+                          setS(() => selectedProjectId = v);
+                          if (v != null) loadAssigneeOptions(v, setS);
+                        },
                       ),
                     ),
                   ],
                 ),
+                if (selectedProjectId != null) ...[
+                  const SizedBox(height: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Assigné à',
+                          style: TextStyle(fontSize: 11, color: context.colors.text2)),
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 2),
+                        decoration: BoxDecoration(
+                            color: context.colors.bg3,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: context.colors.border)),
+                        child: DropdownButton<int>(
+                          value: selectedAssigneeId,
+                          isExpanded: true,
+                          underline: const SizedBox(),
+                          dropdownColor: context.colors.bg3,
+                          hint: Text(
+                              assigneeOptions.isEmpty
+                                  ? 'Aucun membre sur ce projet'
+                                  : 'Non assigné',
+                              style: TextStyle(
+                                  fontSize: 12, color: context.colors.text2)),
+                          style: TextStyle(
+                              fontSize: 12, color: context.colors.text1),
+                          items: assigneeOptions
+                              .map((m) => DropdownMenuItem(
+                                    value: m.id,
+                                    child: Text(m.fullName,
+                                        overflow: TextOverflow.ellipsis),
+                                  ))
+                              .toList(),
+                          onChanged: (v) => setS(() => selectedAssigneeId = v),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 10),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -919,7 +990,8 @@ class _TasksScreenState extends State<TasksScreen> {
                   }
                   try {
                     await ApiService.createTask(titleCtrl.text, descCtrl.text,
-                        int.parse(selectedProjectId!), priority);
+                        int.parse(selectedProjectId!), priority,
+                        assigneeId: selectedAssigneeId);
                     if (mounted) Navigator.pop(context);
                     _load();
                     if (mounted) {
@@ -954,9 +1026,13 @@ class _TasksScreenState extends State<TasksScreen> {
     final l10n = AppLocalizations.of(context)!;
     final titleCtrl = TextEditingController(text: task.title);
     final descCtrl = TextEditingController(text: task.description ?? '');
+    int? selectedAssigneeId = task.assigneeId;
+    final assigneeOptionsFuture = ApiService.getProjectMembers(task.projectId);
+
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setS) => AlertDialog(
         backgroundColor: context.colors.bg2,
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -972,6 +1048,52 @@ class _TasksScreenState extends State<TasksScreen> {
               _dialogField(l10n.fieldTitle, titleCtrl),
               const SizedBox(height: 10),
               _dialogField(l10n.fieldDescription, descCtrl),
+              const SizedBox(height: 10),
+              FutureBuilder<List<MemberModel>>(
+                future: assigneeOptionsFuture,
+                builder: (context, snapshot) {
+                  final assigneeOptions = snapshot.data ?? [];
+                  // Tant que la liste charge (ou si l'assigné actuel n'y figure
+                  // plus), la valeur affichée doit rester parmi les items
+                  // presents, sinon DropdownButton lève une assertion.
+                  final dropdownValue = assigneeOptions.any((m) => m.id == selectedAssigneeId)
+                      ? selectedAssigneeId
+                      : null;
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Assigné à',
+                          style: TextStyle(fontSize: 11, color: context.colors.text2)),
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                        decoration: BoxDecoration(
+                            color: context.colors.bg3,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: context.colors.border)),
+                        child: DropdownButton<int?>(
+                          value: dropdownValue,
+                          isExpanded: true,
+                          underline: const SizedBox(),
+                          dropdownColor: context.colors.bg3,
+                          hint: Text('Non assigné',
+                              style: TextStyle(fontSize: 12, color: context.colors.text2)),
+                          style: TextStyle(fontSize: 12, color: context.colors.text1),
+                          items: [
+                            const DropdownMenuItem<int?>(
+                                value: null, child: Text('Non assigné')),
+                            ...assigneeOptions.map((m) => DropdownMenuItem<int?>(
+                                  value: m.id,
+                                  child: Text(m.fullName, overflow: TextOverflow.ellipsis),
+                                )),
+                          ],
+                          onChanged: (v) => setS(() => selectedAssigneeId = v),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
             ],
           ),
         ),
@@ -988,7 +1110,7 @@ class _TasksScreenState extends State<TasksScreen> {
                       title: titleCtrl.text,
                       description: descCtrl.text,
                       priority: task.priority,
-                      assigneeId: task.assigneeId,
+                      assigneeId: selectedAssigneeId,
                       storyPoints: task.storyPoints,
                       estimatedHours: task.estimatedHours);
                   if (mounted) Navigator.pop(context);
@@ -1016,6 +1138,7 @@ class _TasksScreenState extends State<TasksScreen> {
                   ElevatedButton.styleFrom(backgroundColor: context.colors.accent),
               child: Text(l10n.editMenuItem)),
         ],
+        ),
       ),
     );
   }

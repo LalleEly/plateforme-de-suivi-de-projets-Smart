@@ -54,6 +54,12 @@ class _MembersScreenState extends State<MembersScreen> {
           }
         }
         members = merged.values.toList();
+        if (_userRole == 'CHEF_PROJET') {
+          // Un CHEF_PROJET ne voit que les MEMBRE de ses projets ici (ni
+          // lui-même, ni d'autres CHEF_PROJET qui seraient membres du même
+          // projet) — cette page liste son équipe, pas les autres leads.
+          members = members.where((m) => m.globalRole == 'MEMBRE').toList();
+        }
       }
 
       setState(() { _members = members; _loading = false; });

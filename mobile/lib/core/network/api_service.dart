@@ -152,13 +152,15 @@ class ApiService {
   }
 
   static Future<TaskModel> createTask(
-      String title, String description, int projectId, String priority) async {
+      String title, String description, int projectId, String priority,
+      {int? assigneeId}) async {
     final res = await _dio.post('/tasks', data: {
       'title': title,
       'description': description,
       'projectId': projectId,
       'priority': priority,
       'type': 'TASK',
+      'assigneeId': assigneeId,
     });
     return TaskModel.fromJson(res.data);
   }
